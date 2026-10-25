@@ -16,7 +16,7 @@ namespace BionicProsthetics
 
     /// <summary>
     /// Core prosthetic logic. Touch a prosthetic to a stump (or to a modular upper arm / thigh) and it
-    /// snaps on with a powered hinge joint, sized to match the wearer and posed to mirror their healthy limb.
+    /// snaps on with a powered hinge joint, sized to match the wearer and moving within the healthy limb's range.
     /// </summary>
     public class ProstheticBehaviour : MonoBehaviour
     {
@@ -65,11 +65,13 @@ namespace BionicProsthetics
             }
         }
         public Vector2 MountLocal { get { return PixelToLocal(MountPixel); } }
+        /// <summary>Texture row just under a socket's rim; the hinge point when plugged into a modular mount.</summary>
+        const float MountedRimRow = 2f;
+        /// <summary>The game's Brick prefab, used so lower segments are real, grabbable game objects.</summary>
+        public static GameObject SegmentPrefab;
 
         HingeJoint2D joint;
         PersonBehaviour directWearer;
-        HingeJoint2D mimicJoint;
-        bool mimicInverted;
         float motorTorque;
         readonly Servo socketServo = new Servo();
 
@@ -77,8 +79,8 @@ namespace BionicProsthetics
         HingeJoint2D midJoint;
         Vector2 jointPixel;
         Vector2 segmentJointPixel;
-        HingeJoint2D midMimic;
-        bool midMimicInverted;
+        HingeJoint2D twinMidJoint;
+        bool twinMidInverted;
         float midTorque;
         float midConventionVotes;
         readonly Servo midServo = new Servo();
@@ -508,7 +510,9 @@ namespace BionicProsthetics
             else anchorLocal = EstimateAnchorPoint(anchor);
 
             // Resize uniformly so the prosthetic is as long as the limb it replaces.
-            Vector2 attachLocal = PixelToLocal(AttachPixel);
+            // On a modular upper arm / thigh the piece hinges from its socket rim, tucked under the elbow/knee
+            // ball, instead of from deep inside the socket (which buried the socket in the upper piece).
+            Vector2 attachLocal = PixelToLocal(mount != null ? new Vector2(AttachPixel.x, MountedRimRow) : AttachPixel);
             float ownLength = attachLocal.y - Renderer.sprite.bounds.min.y;
             if (segment != null)
             {
@@ -541,7 +545,8 @@ namespace BionicProsthetics
                 LimbBehaviour twinFoot = IsArm ? null : Get(limbs, "Foot" + twinSide);
                 if (twinFoot != null && twinFoot.GetComponent<Rigidbody2D>() != null) SegmentBody.mass += twinFoot.GetComponent<Rigidbody2D>().mass;
                 PlaceSegment();
-                midMimic = twinLowerRb != null ? FindHinge(twinLowerRb, twinRb, out midMimicInverted) : null;
+                // The healthy elbow/knee only lends its range of motion; we don't copy its pose.
+                twinMidJoint = twinLowerRb != null ? FindHinge(twinLowerRb, twinRb, out twinMidInverted) : null;
             }
             else
             {
@@ -580,9 +585,8 @@ namespace BionicProsthetics
             }
             joint.limits = limits;
 
-            // Arms mirror the healthy arm; legs hold straight and strong enough to stand on.
-            mimicJoint = IsArm ? twinJoint : null;
-            mimicInverted = twinInverted;
+            // Arms hold a relaxed pose on their own and never copy the healthy arm (that coupled the two arms
+            // together); legs hold straight and strong enough to stand on.
             float wearerMass = 0f;
             if (person != null)
                 foreach (Rigidbody2D rb in person.GetComponentsInChildren<Rigidbody2D>()) wearerMass += rb.mass;
@@ -590,12 +594,12 @@ namespace BionicProsthetics
             float armMass = Body.mass + (SegmentBody != null ? SegmentBody.mass : 0f);
             // Leg joints carry the wearer; with nobody wearing the assembly yet they only hold themselves.
             float legLoad = person != null ? wearerMass : armMass * 4f;
-            motorTorque = IsArm ? armMass * gravity * expected * 4f : legLoad * gravity * expected * 1.2f;
+            motorTorque = IsArm ? armMass * gravity * expected * 1.2f : legLoad * gravity * expected * 1.2f;
             joint.useMotor = !LockJoint;
             socketServo.ResetSample();
             // An elbow only carries the forearm; a knee has to carry the whole wearer.
             if (SegmentBody != null)
-                midTorque = IsArm ? SegmentBody.mass * gravity * expected * 0.5f * 4f : legLoad * gravity * expected * 0.5f * 1.2f;
+                midTorque = IsArm ? SegmentBody.mass * gravity * expected * 0.5f * 1.5f : legLoad * gravity * expected * 0.5f * 1.2f;
 
             Anchor = anchor;
             directWearer = mount != null ? null : person;
@@ -607,8 +611,11 @@ namespace BionicProsthetics
             SpriteRenderer anchorRenderer = mount != null ? mount.Renderer : anchor.GetComponent<SpriteRenderer>();
             if (anchorRenderer != null)
             {
-                int offsetOrder = IsTorsoMounted ? (side == "Front" ? 2 : -2) : 1;
-                SetSorting(anchorRenderer.sortingLayerID, anchorRenderer.sortingOrder + offsetOrder);
+                int order;
+                if (mount != null) order = mount.Renderer.sortingOrder - 1; // the elbow/knee ball covers our socket rim
+                else if (IsTorsoMounted) order = TorsoSortingOrder(limbs, replaced, side, anchorRenderer);
+                else order = anchorRenderer.sortingOrder + 1;
+                SetSorting(anchorRenderer.sortingLayerID, order);
             }
 
             if (announce)
@@ -619,6 +626,39 @@ namespace BionicProsthetics
             }
             SendMessage("OnProstheticAttached", SendMessageOptions.DontRequireReceiver);
             RefitMountedPieces();
+        }
+
+        /// <summary>Draw order for a limb mounted on the torso, so it layers like the limb it replaces.</summary>
+        int TorsoSortingOrder(Dictionary<string, LimbBehaviour> limbs, string replaced, string side, SpriteRenderer anchorRenderer)
+        {
+            // The original limb (cut off but still lying around) knows exactly where it was drawn.
+            LimbBehaviour original = replaced != null ? Get(limbs, replaced) : null;
+            SpriteRenderer originalRenderer = original != null ? original.GetComponent<SpriteRenderer>() : null;
+            if (originalRenderer != null) return originalRenderer.sortingOrder;
+
+            int min = int.MaxValue, max = int.MinValue;
+            foreach (LimbBehaviour l in limbs.Values)
+            {
+                SpriteRenderer r = l != null ? l.GetComponent<SpriteRenderer>() : null;
+                if (r == null) continue;
+                min = Mathf.Min(min, r.sortingOrder);
+                max = Mathf.Max(max, r.sortingOrder);
+            }
+            bool front = side == "Front";
+            if (IsArm)
+            {
+                // Front arm over everything (legs included), back arm behind everything. The gaps leave room for a
+                // forearm drawn one layer above (built-in) or below (plugged into a modular upper arm) without ties.
+                if (min == int.MaxValue) return anchorRenderer.sortingOrder + (front ? 3 : -3);
+                return front ? max + 2 : min - 3;
+            }
+            // Legs: mirror the healthy leg around the hips.
+            string anchorBase, replacedBase;
+            SlotNames(Slot, out anchorBase, out replacedBase);
+            LimbBehaviour twin = Get(limbs, replacedBase + (front ? "" : "Front"));
+            SpriteRenderer twinRenderer = twin != null ? twin.GetComponent<SpriteRenderer>() : null;
+            if (twinRenderer != null) return 2 * anchorRenderer.sortingOrder - twinRenderer.sortingOrder;
+            return anchorRenderer.sortingOrder + (front ? 1 : -2);
         }
 
         /// <summary>Takes the prosthetic off. Safe to call when it isn't attached. Pieces plugged into it stay on it.</summary>
@@ -633,8 +673,7 @@ namespace BionicProsthetics
             Anchor = null;
             directWearer = null;
             ReplacedLimb = null;
-            mimicJoint = null;
-            midMimic = null;
+            twinMidJoint = null;
             nextAttachTime = Time.time + 1.5f;
             if (announce) Play(Res.Detach);
             SendMessage("OnProstheticDetached", SendMessageOptions.DontRequireReceiver);
@@ -736,10 +775,7 @@ namespace BionicProsthetics
             socketServo.Sample(joint);
             if (!joint.useMotor) return;
 
-            float target = 0f;
-            if (mimicJoint != null && mimicJoint.enabled && mimicJoint.connectedBody != null)
-                target = mimicInverted ? -mimicJoint.jointAngle : mimicJoint.jointAngle;
-            socketServo.Drive(joint, target, motorTorque);
+            socketServo.Drive(joint, 0f, motorTorque);
         }
 
         // ------------------------------------------------------------ two-piece limbs
@@ -755,23 +791,39 @@ namespace BionicProsthetics
             segmentJointPixel = jointOnSegment;
             TipPixel = tipOnSegment;
 
-            segment = new GameObject(DisplayName + (IsArm ? " Forearm" : " Shin"));
+            // Built from the game's own Brick prefab so it is a real object you can hover, select, grab and activate.
+            segment = SegmentPrefab != null ? Instantiate(SegmentPrefab) : new GameObject();
+            segment.name = DisplayName + (IsArm ? " Forearm" : " Shin");
             segment.layer = gameObject.layer;
-            SegmentRenderer = segment.AddComponent<SpriteRenderer>();
+            SegmentRenderer = segment.GetComponent<SpriteRenderer>();
+            if (SegmentRenderer == null) SegmentRenderer = segment.AddComponent<SpriteRenderer>();
             SegmentRenderer.sprite = sprite;
-            SegmentRenderer.sharedMaterial = Renderer.sharedMaterial;
+            if (SegmentPrefab == null) SegmentRenderer.sharedMaterial = Renderer.sharedMaterial;
             RegisterOverlay(SegmentRenderer, 1); // drawn over the upper piece so the hinge cap covers the seam
 
-            SegmentBody = segment.AddComponent<Rigidbody2D>();
+            SegmentBody = segment.GetComponent<Rigidbody2D>();
+            if (SegmentBody == null) SegmentBody = segment.AddComponent<Rigidbody2D>();
             SegmentBody.mass = Body.mass * 0.6f;
             SegmentBody.gravityScale = Body.gravityScale;
             SegmentBody.drag = Body.drag;
             SegmentBody.angularDrag = Body.angularDrag;
             SegmentBody.interpolation = Body.interpolation;
             SegmentBody.collisionDetectionMode = Body.collisionDetectionMode;
-            PolygonCollider2D shape = segment.AddComponent<PolygonCollider2D>();
-            Collider2D mainShape = GetComponent<Collider2D>();
-            if (mainShape != null) shape.sharedMaterial = mainShape.sharedMaterial;
+            PhysicalBehaviour segmentPhysics = segment.GetComponent<PhysicalBehaviour>();
+            if (segmentPhysics != null)
+            {
+                segment.FixColliders();
+                PhysicalBehaviour mainPhysics = GetComponent<PhysicalBehaviour>();
+                if (mainPhysics != null) segmentPhysics.Properties = mainPhysics.Properties;
+                segmentPhysics.ContextMenuOptions.Buttons.Add(new ContextMenuButton("bionicDetach", "Detach prosthetic",
+                    "Take this prosthetic off its wearer", new UnityEngine.Events.UnityAction[] { () => Detach(true) }));
+            }
+            else
+            {
+                PolygonCollider2D shape = segment.AddComponent<PolygonCollider2D>();
+                Collider2D mainShape = GetComponent<Collider2D>();
+                if (mainShape != null) shape.sharedMaterial = mainShape.sharedMaterial;
+            }
             segment.AddComponent<SegmentLink>().Owner = this;
             PlaceSegment();
         }
@@ -848,14 +900,14 @@ namespace BionicProsthetics
             if (Mathf.Abs(relativeSpin) > 20f && Mathf.Abs(midServo.Rate) > 10f)
                 midConventionVotes = Mathf.Clamp(midConventionVotes + Mathf.Sign(relativeSpin * midServo.Rate), -10f, 10f);
 
-            bool twinValid = Attached && midMimic != null && midMimic.enabled && midMimic.connectedBody != null;
+            bool twinValid = Attached && twinMidJoint != null && twinMidJoint.enabled && twinMidJoint.connectedBody != null;
             // Elbows bend forward, knees bend back: copy the healthy joint's range, or use the natural
             // range once we know which way the hinge measures.
             JointAngleLimits2D limits = midJoint.limits;
-            if (twinValid && midMimic.useLimits)
+            if (twinValid && twinMidJoint.useLimits)
             {
-                limits.min = midMimicInverted ? -midMimic.limits.max : midMimic.limits.min;
-                limits.max = midMimicInverted ? -midMimic.limits.min : midMimic.limits.max;
+                limits.min = twinMidInverted ? -twinMidJoint.limits.max : twinMidJoint.limits.min;
+                limits.max = twinMidInverted ? -twinMidJoint.limits.min : twinMidJoint.limits.max;
             }
             else if (Mathf.Abs(midConventionVotes) >= 3f)
             {
@@ -867,17 +919,14 @@ namespace BionicProsthetics
             if (!Mathf.Approximately(limits.min, midJoint.limits.min) || !Mathf.Approximately(limits.max, midJoint.limits.max))
                 midJoint.limits = limits;
 
-            // Loose on the floor the segment flops freely. Worn, an elbow follows the healthy elbow (or rests
-            // slightly bent); a knee locks straight to stand on, but gives under hard impacts and springs back.
+            // Loose on the floor the segment flops freely. Worn, an elbow rests slightly bent (gently, so dragging
+            // it doesn't fight you); a knee locks straight to stand on, but gives under hard impacts and springs back.
             if (!Attached)
             {
                 midJoint.useMotor = false;
                 return;
             }
-            float target;
-            if (!IsArm) target = 0f;
-            else if (twinValid) target = midMimicInverted ? -midMimic.jointAngle : midMimic.jointAngle;
-            else target = ForwardBend(15f);
+            float target = IsArm ? ForwardBend(15f) : 0f;
             midServo.Drive(midJoint, target, midTorque);
         }
 
@@ -945,6 +994,12 @@ namespace BionicProsthetics
         void OnCollisionStay2D(Collision2D collision)
         {
             if (Owner != null) Owner.OnPartContact(collision.collider);
+        }
+
+        // Activating the forearm / shin itself (F) triggers the prosthetic's ability.
+        public void Use(ActivationPropagation activation)
+        {
+            if (Owner != null) Owner.SendMessage("Use", activation, SendMessageOptions.DontRequireReceiver);
         }
 
         void Update()

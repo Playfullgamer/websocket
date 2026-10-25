@@ -12,6 +12,8 @@ namespace Mod
         public static void Main()
         {
             Res.Load();
+            try { ProstheticBehaviour.SegmentPrefab = ModAPI.FindSpawnable("Brick").Prefab; }
+            catch { ProstheticBehaviour.SegmentPrefab = null; }
             category = CreateCategory("Prosthetics", "Replacement limbs for anyone who's lost one - from peg legs to plasma cannons.",
                 ModAPI.LoadSprite("category.png"));
             if (category == null) category = FindCategory("Misc.") ?? FindCategory("Entities");
@@ -93,7 +95,7 @@ namespace Mod
                 p => { p.gameObject.AddComponent<Grabber>().ClosedSprite = Res.ClawClosed; });
 
             Add("Medical Prosthetic Arm", "medical_arm_upper", "medical_arm", ProstheticSlot.FullArm, SpriteData.MedicalArmAttach, SpriteData.MedicalArmTip, "Plastic",
-                "A myoelectric arm with a working elbow and an articulated hand that mirrors the wearer's other arm. " +
+                "A myoelectric arm with a working elbow and an articulated robotic hand. " +
                 "Touch it to the CHEST (upper body) of anyone missing an entire arm.",
                 p => { p.BuildSegment(medicalForearm, SpriteData.MedicalArmJoint, SpriteData.MedicalArmLowerJoint, SpriteData.MedicalArmTip); });
 

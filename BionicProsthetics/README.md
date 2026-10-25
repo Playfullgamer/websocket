@@ -3,7 +3,7 @@
 ![banner](thumb.png)
 
 Lost a limb? Not a problem. This mod adds **26 prosthetics** with custom art that snap onto
-stumps, resize themselves to fit the wearer, and copy the pose of the wearer's healthy limb.
+stumps, resize themselves to fit the wearer, and move within the range of a real limb.
 Most of them do something when you activate them.
 
 ## Installing
@@ -27,7 +27,7 @@ The prosthetics get their own **Prosthetics** tab in the spawn menu (if the game
 | Modular thigh | the upper leg | the **hips**, then plug any lower leg into its knee |
 
 It clicks into place with a servo sound. It is scaled to match the wearer's other limbs
-and drawn in the right layer (in front of or behind the body). The wearer's own body won't
+and drawn in the right layer: front arms over the body and legs, back arms behind everything. The wearer's own body won't
 collide with it. If you touch the wrong body part of someone it would fit, a hint tells you where it goes.
 
 * **Activate** (F) to use its ability.
@@ -38,8 +38,9 @@ collide with it. If you touch the wrong body part of someone it would fit, a hin
   floor first and then fit the whole thing. Detaching an upper piece keeps whatever is plugged into it.
 * **Full arms and full legs have two joints** (shoulder + elbow, hip + knee), so they bend like real limbs.
   Lying loose on the floor the lower half flops freely, but elbows only bend forward and knees only bend back.
-* Worn arms copy whatever the healthy arm is doing at both joints. If there isn't a healthy arm, the arm hangs
-  naturally with a slight bend.
+* Worn arms move on their own. They hold a relaxed pose (hanging, elbow slightly bent) with a gentle motor, so
+  you can grab and pose them freely, and moving one arm never drags the other along. On full arms you can grab
+  the forearm itself, too.
 * Worn legs hold the hip and knee straight, with enough torque to bear the wearer's weight. A hard hit
   can buckle the knee, and it springs straight again afterwards.
 
