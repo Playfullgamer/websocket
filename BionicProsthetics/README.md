@@ -2,7 +2,7 @@
 
 ![banner](thumb.png)
 
-Lost a limb? Not a problem. This mod adds **14 prosthetics** with custom art that snap onto
+Lost a limb? Not a problem. This mod adds **26 prosthetics** with custom art that snap onto
 stumps, resize themselves to fit the wearer, and copy the pose of the wearer's healthy limb.
 Most of them do something when you activate them.
 
@@ -23,6 +23,8 @@ The prosthetics get their own **Prosthetics** tab in the spawn menu (if the game
 | Full arm | the whole arm | the **chest** |
 | Lower leg | lower leg + foot | the **upper leg** |
 | Full leg | the whole leg | the **hips** |
+| Modular upper arm | the upper arm | the **chest**, then plug any forearm into its elbow |
+| Modular thigh | the upper leg | the **hips**, then plug any lower leg into its knee |
 
 It clicks into place with a servo sound. It is scaled to match the wearer's other limbs
 and drawn in the right layer (in front of or behind the body). The wearer's own body won't
@@ -30,6 +32,10 @@ collide with it. If you touch the wrong body part of someone it would fit, a hin
 
 * **Activate** (F) to use its ability.
 * Right-click → **Detach prosthetic** to take it off.
+* **Modular builds:** a missing arm doesn't have to get a ready-made full arm. Fit a *Modular Upper Arm*, then
+  touch any forearm prosthetic (hook, claw, plasma cannon, drill, flashlight, golden hand) to its elbow socket.
+  Thighs work the same with peg legs, running blades and pogo springs. You can also assemble the pieces on the
+  floor first and then fit the whole thing. Detaching an upper piece keeps whatever is plugged into it.
 * **Full arms and full legs have two joints** (shoulder + elbow, hip + knee), so they bend like real limbs.
   Lying loose on the floor the lower half flops freely, but elbows only bend forward and knees only bend back.
 * Worn arms copy whatever the healthy arm is doing at both joints. If there isn't a healthy arm, the arm hangs
@@ -55,17 +61,24 @@ collide with it. If you touch the wrong body part of someone it would fit, a hin
 | ![](thumbs/drill_arm.png) | Drill Arm | forearm | toggle a spinning drill (animated, sparks, grinds and shoves) |
 | ![](thumbs/flashlight_hand.png) | Flashlight Hand | forearm | toggle a light with a visible beam |
 | ![](thumbs/golden_hand.png) | 24K Golden Hand | forearm | glints all the time; activate for a shower of sparkles |
+| ![](thumbs/steampunk_arm.png) | Steampunk Arm | full arm | vents a scalding blast of steam |
+| ![](thumbs/tesla_arm.png) | Tesla Arm | full arm | chain lightning that arcs through up to 4 things |
+| ![](thumbs/loader_arm.png) | Loader Claw Arm | full arm | big hydraulic claw: clamp onto objects or walls |
+| ![](thumbs/heavy_cannon_arm.png) | Heavy Plasma Arm | full arm | fires huge plasma bolts |
+| ![](thumbs/pirate_arm.png) | Pirate Arm | full arm | carved oak arm with a hook: hook on / let go |
+| ![](thumbs/medical_arm_mount.png) | Modular Upper Arm (Medical / Cyber / Steampunk / Pirate) | upper arm | takes any forearm prosthetic |
+| ![](thumbs/medical_leg_mount.png) | Modular Thigh (Medical / Cyber / Rocket) | upper leg | takes any lower-leg prosthetic |
 
 ## Files
 
 ```
 mod.json                 mod manifest
-Main.cs                  registers the 14 items
-ProstheticBehaviour.cs   stump detection, fitting, sizing, servo joints, jointed elbows/knees, detaching
-Abilities.cs             activation abilities (jump, grab, cannon, punch, drill, rocket, light, bling)
+Main.cs                  registers the 26 items
+ProstheticBehaviour.cs   stump detection, fitting, sizing, servo joints, jointed elbows/knees, modular mounting
+Abilities.cs             activation abilities (jump, grab, cannon, punch, drill, rocket, light, bling, steam, lightning)
 FX.cs                    asset loading + lightweight particle/shockwave/blast helpers
 SpriteData.cs            socket/tip pixel coordinates (generated)
-sprites/ thumbs/ fx/     pixel art (full arms and legs are split into _upper / _lower pieces)
+sprites/ thumbs/ fx/     pixel art (full limbs are split into _upper / _lower pieces; _mount = stand-alone upper)
 category.png             spawn-menu tab icon
 sfx/                     sound effects
 ```

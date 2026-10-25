@@ -37,6 +37,8 @@ YELLOW = [(116, 78, 10), (178, 126, 20), (234, 182, 36), (252, 216, 88), (255, 2
 RUBBER = [(14, 14, 16), (24, 24, 28), (38, 38, 44), (58, 58, 66), (86, 86, 96)]
 BLUEPAINT = [(14, 30, 70), (24, 50, 110), (40, 80, 160), (80, 130, 210), (170, 210, 255)]
 
+COPPER = [(86, 38, 20), (136, 64, 34), (190, 102, 56), (228, 148, 94), (255, 208, 168)]
+VIOLET = [(70, 34, 150), (120, 74, 226), (176, 136, 255), (222, 204, 255), (250, 246, 255)]
 CYAN = [(20, 110, 160), (40, 180, 230), (90, 235, 255), (190, 252, 255), (240, 255, 255)]
 GREEN = [(16, 110, 60), (40, 190, 100), (100, 255, 160), (190, 255, 215), (240, 255, 245)]
 WARM = [(150, 110, 40), (230, 190, 90), (255, 230, 150), (255, 248, 210), (255, 255, 245)]
@@ -692,6 +694,225 @@ def golden_hand():
     return c, (8, 6), (8, 42)
 
 
+# ---------------------------------------------------------------- more full arms
+# Drawn whole with the elbow centred at y=34, then cut in two by split_limb.
+
+def arm_dome(c, cx, pal, y0=1, y1=13, w=15):
+    for y in range(y0, y1 + 1):
+        ww = w - abs(y - (y0 + y1) / 2) * 0.45
+        x0 = int(round(cx - ww / 2))
+        c.hspan(y, x0, x0 + int(round(ww)) - 1, pal)
+
+
+def steampunk_arm(outline=True):
+    c = Canvas(22, 80)
+    cx = 9.5
+    arm_dome(c, cx, COPPER)  # riveted copper pauldron
+    for x in range(4, 16, 3):
+        c.bolt(x, 11, BRASS)
+    c.bolt(6, 3, BRASS)
+    c.bolt(12, 3, BRASS)
+    c.taper(14, 31, cx, 11, 10, BRASS)  # brass upper arm
+    c.band(16, 17, 4, 15, COPPER)
+    c.band(28, 29, 4, 15, COPPER)
+    c.disk(cx - 0.5, 22.5, 3.4, BRASS[0])  # pressure gauge
+    c.disk(cx - 0.5, 22.5, 2.5, (236, 228, 205))
+    c.line(cx - 0.5, 22.5, cx + 1.3, 21, RED[2])
+    c.put(cx - 0.5, 22.5, RUBBER[1])
+    c.cyl(4, 31, 15, 37, BRASS)
+    c.taper(38, 58, cx, 10, 9, GUNMETAL)  # iron forearm core
+    c.cyl(3, 39, 4, 55, CHROME)  # twin pistons
+    c.cyl(14, 39, 15, 55, CHROME)
+    c.band(39, 41, 3, 15, BRASS)
+    c.band(54, 56, 3, 15, BRASS)
+    c.tube([(7.5, 43), (10.5, 46), (7.5, 49), (10.5, 52)], 1.0, COPPER)  # steam pipe
+    c.band(57, 59, 4, 15, COPPER)
+    c.put(15, 58, (235, 235, 235))  # vent
+    c.cyl(4, 60, 14, 66, BRASS)  # mechanical hand
+    for i, fx in enumerate((4, 6, 8, 10)):
+        ln = (6, 7, 7, 6)[i]
+        c.cyl(fx, 67, fx + 1, 66 + ln, BRASS, spec=False)
+        c.put(fx, 69, BRASS[0])
+        c.put(fx + 1, 69, BRASS[0])
+    c.tube([(14, 62), (16, 65), (16.5, 68)], 1.1, BRASS)
+    if outline:
+        c.outline()
+    return c, (9, 7), (9, 73)
+
+
+def tesla_arm(outline=True):
+    c = Canvas(24, 80)
+    cx = 10.5
+    arm_dome(c, cx, GUNMETAL)
+    for y in (4, 7, 10):  # ceramic insulator ribs
+        c.hspan(y, int(cx - 5), int(cx + 5), WHITE, spec=False)
+    c.taper(14, 31, cx, 12, 11, GUNMETAL)  # iron upper arm wound in copper
+    for y in range(16, 30):
+        if y % 2 == 0:
+            c.hspan(y, int(cx - 6), int(cx + 5), COPPER)
+        else:
+            c.hspan(y, int(cx - 6), int(cx + 5), [COPPER[0]] * 5, spec=False)
+    c.cyl(4, 31, 16, 37, GUNMETAL)
+    c.cyl(int(cx - 3), 38, int(cx + 2), 61, GUNMETAL)  # forearm rod
+    for y in range(41, 57):  # wider copper coil
+        pal = COPPER if y % 2 == 0 else [COPPER[0]] * 5
+        c.hspan(y, int(cx - 5), int(cx + 4), pal, spec=(y % 2 == 0))
+    c.band(38, 40, 3, 17, WHITE)  # insulators
+    c.band(57, 59, 3, 17, WHITE)
+    c.band(60, 61, 6, 14, GUNMETAL)
+    c.disk(cx, 67, 5.2, CHROME[1])  # tesla orb
+    c.disk(cx - 0.6, 66.4, 3.8, CHROME[2])
+    c.disk(cx - 1.4, 65.4, 1.8, CHROME[3])
+    c.put(cx - 2, 64.8, CHROME[4])
+    arcs = [(cx - 6, 63), (cx - 7, 64), (cx + 6, 66), (cx + 7, 65), (cx + 7, 64), (cx - 5, 71),
+            (cx - 6, 72), (cx + 4, 72), (cx + 5, 73), (cx, 73.5)]
+    for i, (x, y) in enumerate(arcs):
+        c.put(x, y, VIOLET[3] if i % 2 else VIOLET[4])
+    c.glow([VIOLET[3], VIOLET[4]], radius=1, alpha=110)
+    if outline:
+        c.outline()
+    return c, (10, 7), (10, 72)
+
+
+def loader_arm(closed=False, outline=True):
+    c = Canvas(24, 82)
+    cx = 10.5
+    c.cyl(3, 1, 18, 11, RUBBER)  # mounting block
+    c.hspan(1, 3, 18, YELLOW)
+    c.hspan(2, 3, 18, YELLOW)
+    c.bolt(5, 6)
+    c.bolt(15, 6)
+    c.cyl(4, 12, 16, 31, YELLOW)  # upper arm
+    for y in range(25, 31):
+        for x in range(4, 17):
+            if ((x + y) // 2) % 2 == 0:
+                c.put(x, y, RUBBER[2])
+    c.cyl(16, 14, 18, 20, STEEL)  # hydraulic ram
+    c.cyl(17, 20, 18, 30, CHROME)
+    c.cyl(4, 31, 16, 37, YELLOW)
+    c.cyl(5, 38, 15, 57, YELLOW)  # forearm
+    for y in range(41, 50, 2):
+        c.hspan(y, 7, 13, RUBBER, spec=False)
+    c.cyl(2, 39, 4, 45, STEEL)
+    c.cyl(3, 45, 4, 56, CHROME)
+    c.band(57, 60, 5, 15, STEEL)  # wrist
+    c.bolt(7, 58)
+    c.bolt(13, 58)
+    if closed:
+        left = [(8, 61), (6.5, 66), (7.5, 72), (10, 77)]
+        right = [(13, 61), (14.5, 66), (13.5, 72), (11, 77)]
+    else:
+        left = [(8, 61), (4.5, 65), (3, 71), (5, 77)]
+        right = [(13, 61), (16.5, 65), (18, 71), (16, 77)]
+    c.tube(left, 2.0, STEEL)
+    c.tube(right, 2.0, STEEL)
+    for pt in (left[-1], right[-1]):
+        c.put(pt[0], pt[1], RED[3])
+        c.put(pt[0], pt[1] + 1, RED[2])
+    if outline:
+        c.outline()
+    return c, (10, 6), (10, 73)
+
+
+def heavy_cannon_arm(outline=True):
+    c = Canvas(24, 82)
+    cx = 10.5
+    arm_dome(c, cx, GUNMETAL, w=16)  # armoured pauldron with an energy cell
+    c.rect(int(cx - 2), 4, int(cx + 2), 9, GREEN[1])
+    c.rect(int(cx - 1), 5, int(cx + 1), 8, GREEN[2])
+    c.put(cx - 1, 5, GREEN[4])
+    c.taper(14, 31, cx, 12, 11, CARBON)  # upper arm
+    c.cyl(int(cx - 5), 16, int(cx - 1), 29, GUNMETAL)
+    for y in range(16, 30):
+        c.put(int(cx + 3), y, GREEN[2] if y % 4 else GREEN[4])
+    c.cyl(4, 31, 16, 37, GUNMETAL)
+    c.cyl(3, 38, 18, 61, GUNMETAL)  # cannon barrel
+    for x in range(4, 18):
+        c.put(x, 38, GUNMETAL[3])
+    for y in range(44, 58, 2):  # heat-sink fins
+        c.put(2, y, STEEL[2])
+        c.put(19, y, STEEL[1])
+    for y in (42, 48, 54):  # energy coils
+        c.hspan(y, 3, 18, GREEN, spec=False)
+        c.hspan(y + 1, 3, 18, [GREEN[0]] * 5, spec=False)
+        c.put(5, y, GREEN[4])
+    for y in range(58, 62):
+        for x in range(3, 19):
+            if ((x + y) // 2) % 2 == 0:
+                c.put(x, y, YELLOW[2] if x < 11 else YELLOW[1])
+    c.taper(62, 72, cx, 14, 11, STEEL)  # muzzle
+    c.band(73, 74, 5, 16, GUNMETAL)
+    for x in range(6, 16):
+        c.put(x, 75, GREEN[2] if 7 < x < 14 else GREEN[1])
+    c.put(10, 75, GREEN[4])
+    c.glow([GREEN[2], GREEN[4]], radius=1, alpha=90)
+    if outline:
+        c.outline()
+    return c, (10, 7), (10, 75)
+
+
+def pirate_arm(outline=True):
+    c = Canvas(24, 80)
+    cx = 9.5
+    arm_dome(c, cx, LEATHER, y1=12, w=14)  # leather harness
+    c.band(8, 10, 2, 17, LEATHER, spec=False)
+    c.rect(11, 8, 13, 10, BRASS[2])
+    c.put(11, 8, BRASS[4])
+    c.taper(13, 31, cx, 11, 10, WOOD)  # carved oak
+    wood_grain(c, 13, 31, 3, 15)
+    c.band(16, 17, 4, 15, STEEL)
+    c.band(27, 28, 4, 15, STEEL)
+    c.bolt(6, 16)
+    c.bolt(6, 27)
+    c.cyl(4, 31, 15, 37, WOOD)
+    c.taper(38, 56, cx, 10, 9, WOOD)
+    wood_grain(c, 38, 56, 3, 15, seed=5)
+    for y in range(49, 56):  # leather wrap
+        c.hspan(y, 5, 14, LEATHER, spec=(y % 2 == 0))
+    c.band(57, 59, 4, 15, BRASS)
+    c.tube([(9.5, 59), (9.5, 66), (10.5, 71), (13.5, 74), (17, 73), (18.5, 69.5), (18, 66)], 2.0, STEEL)
+    c.put(18, 64, STEEL[4])
+    c.put(18, 63, STEEL[3])
+    c.put(17, 65, STEEL[2])
+    if outline:
+        c.outline()
+    return c, (9, 6), (16, 69)
+
+
+def hinge_brass(c, cx, cy):
+    c.disk(cx, cy, ELBOW_RADIUS, BRASS[0])
+    c.disk(cx - 0.4, cy - 0.4, ELBOW_RADIUS - 1, BRASS[2])
+    c.disk(cx, cy, 2.8, COPPER[1])
+    c.shaded_disk(cx, cy, 1.6, COPPER)
+
+
+def hinge_tesla(c, cx, cy):
+    c.disk(cx, cy, ELBOW_RADIUS, GUNMETAL[0])
+    c.disk(cx - 0.4, cy - 0.4, ELBOW_RADIUS - 1, COPPER[2])
+    c.shaded_disk(cx, cy, 2.4, WHITE)
+
+
+def hinge_loader(c, cx, cy):
+    c.disk(cx, cy, ELBOW_RADIUS, STEEL[0])
+    c.disk(cx - 0.4, cy - 0.4, ELBOW_RADIUS - 1, STEEL[2])
+    c.shaded_disk(cx, cy, 2.8, YELLOW)
+    c.put(cx, cy, RUBBER[1])
+
+
+def hinge_heavy(c, cx, cy):
+    c.disk(cx, cy, ELBOW_RADIUS, GUNMETAL[0])
+    c.disk(cx - 0.4, cy - 0.4, ELBOW_RADIUS - 1, GUNMETAL[2])
+    c.disk(cx, cy, 2.6, GREEN[1])
+    c.disk(cx - 0.4, cy - 0.4, 1.5, GREEN[3])
+
+
+def hinge_wood(c, cx, cy):
+    c.disk(cx, cy, ELBOW_RADIUS, WOOD[0])
+    c.disk(cx - 0.4, cy - 0.4, ELBOW_RADIUS - 1, WOOD[2])
+    c.disk(cx - 1.2, cy - 1.2, 1.6, WOOD[3])
+    c.shaded_disk(cx, cy, 1.8, STEEL)
+
+
 # ---------------------------------------------------------------- two-piece limbs
 
 ELBOW_RADIUS = 5.6
@@ -744,9 +965,15 @@ def split_limb(builder, pivot, hinge):
             if y >= py or inside:
                 lower.put(x, y - top, col[:3], col[3])
     hinge(lower, px, py - top)
+    # Stand-alone upper piece (modular upper arm / thigh): same art, capped with the hinge as a socket.
+    mount = Canvas(upper.w, upper.h)
+    mount.img.paste(upper.img)
+    mount.px = mount.img.load()
+    hinge(mount, px, py)
     upper.outline()
     lower.outline()
-    return upper, lower, top, attach, (tip[0], tip[1] - top)
+    mount.outline()
+    return upper, lower, top, attach, (tip[0], tip[1] - top), mount
 
 
 def bent_preview(upper, lower, top, pivot, angle):
@@ -892,8 +1119,8 @@ def banner(sprites, out):
             if x % 16 == 0 or y % 16 == 0:
                 base = (base[0] + 10, base[1] + 18, base[2] + 30)
             px[x, y] = base + (255,)
-    order = ["cyber_arm", "plasma_cannon", "hook", "running_blade", "rocket_leg",
-             "drill_arm_0", "medical_leg", "claw_open", "golden_hand", "cyber_leg"]
+    order = ["cyber_arm", "plasma_cannon", "steampunk_arm", "running_blade", "rocket_leg",
+             "drill_arm_0", "tesla_arm", "claw_open", "golden_hand", "cyber_leg"]
     bigs = []
     for name in order:
         s = sprites[name]
@@ -909,6 +1136,10 @@ def banner(sprites, out):
     draw_text(img, title, (W - text_width(title, 9)) // 2, 22, 9, (120, 240, 255))
     draw_text(img, sub, (W - text_width(sub, 4)) // 2, 94, 4, (235, 240, 250))
     img.convert("RGB").save(out)
+
+
+# Full limbs whose upper half is also sold on its own, with a socket for any forearm / lower leg.
+MODULAR_UPPERS = ("medical_arm", "cyber_arm", "steampunk_arm", "pirate_arm", "medical_leg", "cyber_leg", "rocket_leg")
 
 
 def main():
@@ -947,13 +1178,21 @@ def main():
                                          ("cyber_arm", cyber_arm, (9.5, 34.5), hinge_cyber, 32),
                                          ("medical_leg", medical_leg, (8.5, 31.0), hinge_medical, -28),
                                          ("cyber_leg", cyber_leg, (9.5, 34.5), hinge_cyber, -28),
-                                         ("rocket_leg", rocket_leg, (10.5, 37.0), hinge_rocket, -28)):
-        upper, lower, top, attach, tip = split_limb(fn, pivot, hinge)
+                                         ("rocket_leg", rocket_leg, (10.5, 37.0), hinge_rocket, -28),
+                                         ("steampunk_arm", steampunk_arm, (9.5, 34.0), hinge_brass, 32),
+                                         ("tesla_arm", tesla_arm, (10.5, 34.0), hinge_tesla, 32),
+                                         ("loader_arm", lambda outline: loader_arm(False, outline), (10.5, 34.0), hinge_loader, 32),
+                                         ("heavy_cannon_arm", heavy_cannon_arm, (10.5, 34.0), hinge_heavy, 32),
+                                         ("pirate_arm", pirate_arm, (9.5, 34.0), hinge_wood, 32)):
+        upper, lower, top, attach, tip, mount = split_limb(fn, pivot, hinge)
         upper.save(os.path.join(sp, name + "_upper.png"))
         lower.save(os.path.join(sp, name + "_lower.png"))
         preview = bent_preview(upper, lower, top, pivot, bend)
         sprites[name] = preview
         thumbnail(preview).save(os.path.join(th, name + ".png"))
+        if name in MODULAR_UPPERS:
+            mount.save(os.path.join(sp, name + "_mount.png"))
+            thumbnail(mount.img).save(os.path.join(th, name + "_mount.png"))
         ident = "".join(p.capitalize() for p in name.split("_"))
         arm_lines += [
             f"        public static readonly Vector2 {ident}Attach = new Vector2({attach[0]}f, {attach[1]}f);",
@@ -963,6 +1202,9 @@ def main():
         ]
         meta[name + "_upper"] = (upper.w, upper.h, attach, pivot)
         meta[name + "_lower"] = (lower.w, lower.h, (pivot[0], pivot[1] - top), tip)
+    # The loader claw also needs a closed forearm for its grab animation.
+    _, closed_lower, _, _, _, _ = split_limb(lambda outline: loader_arm(True, outline), (10.5, 34.0), hinge_loader)
+    closed_lower.save(os.path.join(sp, "loader_arm_lower_closed.png"))
     category_icon(sprites["cyber_arm"]).save(os.path.join(ROOT, "category.png"))
     fx_textures(fx)
     banner(sprites, os.path.join(ROOT, "thumb.png"))

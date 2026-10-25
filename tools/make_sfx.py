@@ -156,6 +156,15 @@ def main():
                           pad(highpass(noise(0.012), 2500) * env(0.012, 0.0005, 300) * 0.7, 0.06)), peak=0.5)
     t = t_axis(0.8)
     bells = sum(np.sin(2 * np.pi * f * t) * np.exp(-t * d) for f, d in ((2093, 5), (2637, 6), (3136, 7), (4186, 8)))
+    # steam blast: valve clank into a long pressure-release hiss
+    hiss = lowpass(highpass(noise(0.9), 1200), 7000) * env(0.9, 0.01, 3.2)
+    save("steam.wav", mix(clunk(0.12, 110) * 0.5, pad(hiss, 0.03),
+                          pad(lowpass(noise(0.5), 400) * env(0.5, 0.005, 6) * 0.5, 0.03)), peak=0.6)
+    # tesla zap: crackling arcs with a mains-hum buzz
+    t = t_axis(0.5)
+    buzz = square(2 * np.pi * 120 * t) * 0.25 + saw(2 * np.pi * 240 * t) * 0.15
+    crack = highpass(noise(0.5), 2500) * (rng.uniform(0, 1, len(t)) > 0.75) * 0.9
+    save("zap.wav", mix((buzz + crack) * env(0.5, 0.001, 7), highpass(noise(0.03), 3000) * env(0.03, 0.0005, 120)), peak=0.6)
     save("bling.wav", mix(clunk(0.08, 300) * 0.4, pad(bells * 0.5, 0.05), pad(bells * 0.35, 0.16)), peak=0.5)
 
 

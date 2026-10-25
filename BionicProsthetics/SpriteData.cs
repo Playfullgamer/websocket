@@ -43,5 +43,25 @@ namespace BionicProsthetics
         public static readonly Vector2 RocketLegJoint = new Vector2(10.5f, 37.0f);
         public static readonly Vector2 RocketLegLowerJoint = new Vector2(10.5f, 8.0f);
         public static readonly Vector2 RocketLegTip = new Vector2(10f, 53f);
+        public static readonly Vector2 SteampunkArmAttach = new Vector2(9f, 7f);
+        public static readonly Vector2 SteampunkArmJoint = new Vector2(9.5f, 34.0f);
+        public static readonly Vector2 SteampunkArmLowerJoint = new Vector2(9.5f, 8.0f);
+        public static readonly Vector2 SteampunkArmTip = new Vector2(9f, 47f);
+        public static readonly Vector2 TeslaArmAttach = new Vector2(10f, 7f);
+        public static readonly Vector2 TeslaArmJoint = new Vector2(10.5f, 34.0f);
+        public static readonly Vector2 TeslaArmLowerJoint = new Vector2(10.5f, 8.0f);
+        public static readonly Vector2 TeslaArmTip = new Vector2(10f, 46f);
+        public static readonly Vector2 LoaderArmAttach = new Vector2(10f, 6f);
+        public static readonly Vector2 LoaderArmJoint = new Vector2(10.5f, 34.0f);
+        public static readonly Vector2 LoaderArmLowerJoint = new Vector2(10.5f, 8.0f);
+        public static readonly Vector2 LoaderArmTip = new Vector2(10f, 47f);
+        public static readonly Vector2 HeavyCannonArmAttach = new Vector2(10f, 7f);
+        public static readonly Vector2 HeavyCannonArmJoint = new Vector2(10.5f, 34.0f);
+        public static readonly Vector2 HeavyCannonArmLowerJoint = new Vector2(10.5f, 8.0f);
+        public static readonly Vector2 HeavyCannonArmTip = new Vector2(10f, 49f);
+        public static readonly Vector2 PirateArmAttach = new Vector2(9f, 6f);
+        public static readonly Vector2 PirateArmJoint = new Vector2(9.5f, 34.0f);
+        public static readonly Vector2 PirateArmLowerJoint = new Vector2(9.5f, 8.0f);
+        public static readonly Vector2 PirateArmTip = new Vector2(16f, 43f);
     }
 }

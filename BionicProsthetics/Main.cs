@@ -20,6 +20,11 @@ namespace Mod
             Sprite medicalShin = ModAPI.LoadSprite("sprites/medical_leg_lower.png");
             Sprite cyberShin = ModAPI.LoadSprite("sprites/cyber_leg_lower.png");
             Sprite rocketShin = ModAPI.LoadSprite("sprites/rocket_leg_lower.png");
+            Sprite steampunkForearm = ModAPI.LoadSprite("sprites/steampunk_arm_lower.png");
+            Sprite teslaForearm = ModAPI.LoadSprite("sprites/tesla_arm_lower.png");
+            Sprite loaderForearm = ModAPI.LoadSprite("sprites/loader_arm_lower.png");
+            Sprite heavyForearm = ModAPI.LoadSprite("sprites/heavy_cannon_arm_lower.png");
+            Sprite pirateForearm = ModAPI.LoadSprite("sprites/pirate_arm_lower.png");
 
             // ---------------------------------------------------------------- legs
             Add("Pirate Peg Leg", "peg_leg", ProstheticSlot.LowerLeg, SpriteData.PegLegAttach, SpriteData.PegLegTip, "Wood",
@@ -119,6 +124,78 @@ namespace Mod
                 "Solid gold, jewel-encrusted, completely impractical. Touch it to the UPPER ARM of anyone missing a forearm. " +
                 "Activate to show off.",
                 p => { p.gameObject.AddComponent<Sparkle>(); });
+
+            // ---------------------------------------------------------------- more full arms (all with a working elbow)
+            Add("Steampunk Arm", "steampunk_arm_upper", "steampunk_arm", ProstheticSlot.FullArm, SpriteData.SteampunkArmAttach, SpriteData.SteampunkArmTip, "Metal",
+                "Brass and copper, pistons and a pressure gauge. Touch it to the CHEST (upper body) of anyone missing an entire arm. " +
+                "Activate to vent a scalding blast of steam.",
+                p =>
+                {
+                    p.BuildSegment(steampunkForearm, SpriteData.SteampunkArmJoint, SpriteData.SteampunkArmLowerJoint, SpriteData.SteampunkArmTip);
+                    p.gameObject.AddComponent<SteamBlast>();
+                });
+
+            Add("Tesla Arm", "tesla_arm_upper", "tesla_arm", ProstheticSlot.FullArm, SpriteData.TeslaArmAttach, SpriteData.TeslaArmTip, "Metal",
+                "Copper coils and a crackling tesla orb. Touch it to the CHEST (upper body) of anyone missing an entire arm. " +
+                "Activate to arc chain lightning through everything nearby.",
+                p =>
+                {
+                    p.BuildSegment(teslaForearm, SpriteData.TeslaArmJoint, SpriteData.TeslaArmLowerJoint, SpriteData.TeslaArmTip);
+                    p.gameObject.AddComponent<TeslaZap>();
+                });
+
+            Add("Loader Claw Arm", "loader_arm_upper", "loader_arm", ProstheticSlot.FullArm, SpriteData.LoaderArmAttach, SpriteData.LoaderArmTip, "Metal",
+                "Industrial hydraulic arm with a heavy-duty claw. Touch it to the CHEST (upper body) of anyone missing an entire arm. " +
+                "Activate to clamp onto whatever it touches (even walls), and again to let go.",
+                p =>
+                {
+                    p.BuildSegment(loaderForearm, SpriteData.LoaderArmJoint, SpriteData.LoaderArmLowerJoint, SpriteData.LoaderArmTip);
+                    p.gameObject.AddComponent<Grabber>().ClosedSprite = Res.LoaderClawClosed;
+                });
+
+            Add("Heavy Plasma Arm", "heavy_cannon_arm_upper", "heavy_cannon_arm", ProstheticSlot.FullArm, SpriteData.HeavyCannonArmAttach, SpriteData.HeavyCannonArmTip, "Metal",
+                "A whole arm turned into a siege cannon. Touch it to the CHEST (upper body) of anyone missing an entire arm. " +
+                "Activate to fire huge plasma bolts.",
+                p =>
+                {
+                    p.BuildSegment(heavyForearm, SpriteData.HeavyCannonArmJoint, SpriteData.HeavyCannonArmLowerJoint, SpriteData.HeavyCannonArmTip);
+                    p.gameObject.AddComponent<PlasmaCannon>();
+                });
+
+            Add("Pirate Arm", "pirate_arm_upper", "pirate_arm", ProstheticSlot.FullArm, SpriteData.PirateArmAttach, SpriteData.PirateArmTip, "Wood",
+                "A carved oak arm ending in a hook, for the captain who lost more than a hand. " +
+                "Touch it to the CHEST (upper body) of anyone missing an entire arm. Activate to hook on, again to let go.",
+                p =>
+                {
+                    p.BuildSegment(pirateForearm, SpriteData.PirateArmJoint, SpriteData.PirateArmLowerJoint, SpriteData.PirateArmTip);
+                    p.gameObject.AddComponent<Grabber>();
+                });
+
+            // ---------------------------------------------------------------- modular upper arms and thighs
+            const string armMountHelp = " Touch it to the CHEST of anyone missing an entire arm, then plug ANY forearm prosthetic " +
+                "(hook, claw, cannon, drill...) into its elbow. Works on the floor too - build first, fit later.";
+            const string legMountHelp = " Touch it to the HIPS of anyone missing an entire leg, then plug ANY lower-leg prosthetic " +
+                "(peg leg, running blade, pogo spring) into its knee. Works on the floor too - build first, fit later.";
+            AddMount("Modular Upper Arm (Medical)", "medical_arm", ProstheticSlot.UpperArm, SpriteData.MedicalArmAttach, SpriteData.MedicalArmJoint, "Plastic",
+                "A medical upper arm with an elbow socket." + armMountHelp);
+            AddMount("Modular Upper Arm (Cyber)", "cyber_arm", ProstheticSlot.UpperArm, SpriteData.CyberArmAttach, SpriteData.CyberArmJoint, "Metal",
+                "A chrome upper arm with a powered elbow socket." + armMountHelp);
+            AddMount("Modular Upper Arm (Steampunk)", "steampunk_arm", ProstheticSlot.UpperArm, SpriteData.SteampunkArmAttach, SpriteData.SteampunkArmJoint, "Metal",
+                "A brass upper arm with a geared elbow socket." + armMountHelp);
+            AddMount("Modular Upper Arm (Pirate)", "pirate_arm", ProstheticSlot.UpperArm, SpriteData.PirateArmAttach, SpriteData.PirateArmJoint, "Wood",
+                "A carved oak upper arm with an iron-bolted elbow socket." + armMountHelp);
+            AddMount("Modular Thigh (Medical)", "medical_leg", ProstheticSlot.UpperLeg, SpriteData.MedicalLegAttach, SpriteData.MedicalLegJoint, "Plastic",
+                "A thigh socket with a hydraulic knee mount." + legMountHelp);
+            AddMount("Modular Thigh (Cyber)", "cyber_leg", ProstheticSlot.UpperLeg, SpriteData.CyberLegAttach, SpriteData.CyberLegJoint, "Metal",
+                "An armoured thigh with a reactor knee mount." + legMountHelp);
+            AddMount("Modular Thigh (Rocket)", "rocket_leg", ProstheticSlot.UpperLeg, SpriteData.RocketLegAttach, SpriteData.RocketLegJoint, "Metal",
+                "A rocket-casing thigh with a bolted knee mount." + legMountHelp);
+        }
+
+        /// <summary>A stand-alone upper arm / thigh whose elbow / knee takes another prosthetic.</summary>
+        static void AddMount(string name, string art, ProstheticSlot slot, Vector2 attach, Vector2 mount, string material, string description)
+        {
+            Add(name, art + "_mount", art + "_mount", slot, attach, mount, material, description, p => { p.MountPixel = mount; });
         }
 
         static void Add(string name, string sprite, ProstheticSlot slot, Vector2 attach, Vector2 tip, string material,

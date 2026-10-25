@@ -101,7 +101,7 @@ namespace BionicProsthetics
 
         void Start()
         {
-            openSprite = P.Renderer.sprite;
+            openSprite = P.TipRenderer.sprite;
         }
 
         protected override void Activate()
@@ -119,29 +119,29 @@ namespace BionicProsthetics
                 P.Play(Res.Release, 0.6f);
                 return;
             }
-            grip = gameObject.AddComponent<FixedJoint2D>();
+            grip = P.TipTransform.gameObject.AddComponent<FixedJoint2D>();
             grip.autoConfigureConnectedAnchor = true;
             grip.enableCollision = false;
-            grip.anchor = P.PixelToLocal(P.TipPixel);
+            grip.anchor = P.TipLocal;
             grip.connectedBody = target.attachedRigidbody; // null = hold on to the world itself
             grippedBody = target.attachedRigidbody != null;
-            if (ClosedSprite != null) P.Renderer.sprite = ClosedSprite;
+            if (ClosedSprite != null) P.TipRenderer.sprite = ClosedSprite;
             P.Play(Res.Grab);
             FX.Burst(Res.Spark, P.TipWorld, new Color(1f, 0.9f, 0.6f), 6, P.WorldLength * 2f, P.WorldLength * 0.05f, 0.25f, P.Renderer);
         }
 
         IEnumerator Snap()
         {
-            P.Renderer.sprite = ClosedSprite;
+            P.TipRenderer.sprite = ClosedSprite;
             yield return new WaitForSeconds(0.2f);
-            if (grip == null) P.Renderer.sprite = openSprite;
+            if (grip == null) P.TipRenderer.sprite = openSprite;
         }
 
         void Release(bool sound)
         {
             if (grip != null) Destroy(grip);
             grip = null;
-            if (ClosedSprite != null) P.Renderer.sprite = openSprite;
+            if (ClosedSprite != null) P.TipRenderer.sprite = openSprite;
             if (sound) P.Play(Res.Release);
         }
 
@@ -170,7 +170,7 @@ namespace BionicProsthetics
             float L = P.WorldLength;
             Vector2 muzzle = P.TipWorld + dir * L * 0.05f;
             PlasmaBolt.Spawn(muzzle, dir * 30f, P);
-            P.Body.velocity -= dir * 2.5f;
+            P.TipBody.velocity -= dir * 2.5f;
             P.Play(Res.PlasmaFire, 0.9f);
             Color green = new Color(0.45f, 1f, 0.65f, 1f);
             FX.Particle(Res.Glow, muzzle, Vector2.zero, green, L * 0.5f, L * 0.1f, 0.12f, 0f, 0f, P.Renderer);
@@ -314,7 +314,7 @@ namespace BionicProsthetics
             else
             {
                 loop.Stop();
-                P.Renderer.sprite = Res.DrillFrames[0];
+                P.TipRenderer.sprite = Res.DrillFrames[0];
             }
         }
 
@@ -327,7 +327,7 @@ namespace BionicProsthetics
             {
                 frameTimer = 0.03f;
                 frame = (frame + 1) % Res.DrillFrames.Length;
-                P.Renderer.sprite = Res.DrillFrames[frame];
+                P.TipRenderer.sprite = Res.DrillFrames[frame];
             }
         }
 
@@ -355,7 +355,7 @@ namespace BionicProsthetics
                 else
                 {
                     // Grinding into the ground or a wall pushes the wearer back.
-                    P.Body.AddForce(-dir * 35f * P.Body.mass);
+                    P.TipBody.AddForce(-dir * 35f * P.TipBody.mass);
                 }
             }
             if (touching)
@@ -368,7 +368,7 @@ namespace BionicProsthetics
                 }
             }
             // Motor vibration.
-            P.Body.AddTorque(UnityEngine.Random.Range(-1f, 1f) * P.Body.inertia * 600f);
+            P.TipBody.AddTorque(UnityEngine.Random.Range(-1f, 1f) * P.TipBody.inertia * 600f);
         }
 
         void OnDisable()
@@ -471,16 +471,16 @@ namespace BionicProsthetics
 
         void Start()
         {
-            Vector2 tip = P.PixelToLocal(P.TipPixel);
-            lamp = ModAPI.CreateLight(transform, new Color(1f, 0.93f, 0.75f), 7f, 1.6f).gameObject;
+            Vector2 tip = P.TipLocal;
+            lamp = ModAPI.CreateLight(P.TipTransform, new Color(1f, 0.93f, 0.75f), 7f, 1.6f).gameObject;
             lamp.transform.localPosition = tip;
 
             beam = new GameObject("Beam");
-            beam.transform.SetParent(transform, false);
+            beam.transform.SetParent(P.TipTransform, false);
             SpriteRenderer r = beam.AddComponent<SpriteRenderer>();
             r.sprite = Res.Beam;
             // Beam texture points down with its apex at the top edge; hang it from the lens.
-            float pixelScale = Res.Beam.pixelsPerUnit / P.Renderer.sprite.pixelsPerUnit;
+            float pixelScale = Res.Beam.pixelsPerUnit / P.TipRenderer.sprite.pixelsPerUnit;
             beam.transform.localScale = Vector3.one * pixelScale * 1.6f;
             beam.transform.localPosition = new Vector3(tip.x, tip.y - Res.Beam.bounds.extents.y * pixelScale * 1.6f, 0f);
             P.RegisterOverlay(r, 5);
@@ -529,6 +529,98 @@ namespace BionicProsthetics
             Vector2 p = Vector2.Lerp(P.AttachWorld, P.TipWorld, UnityEngine.Random.Range(0.2f, 1f))
                 + UnityEngine.Random.insideUnitCircle * L * 0.12f;
             FX.Particle(Res.Glow, p, Vector2.up * L * 0.2f, new Color(1f, 0.95f, 0.7f, 0.9f), L * 0.12f, 0f, 0.4f, 0f, 0f, P.Renderer);
+        }
+    }
+
+    /// <summary>Steampunk arm: vents a scalding blast of steam that shoves everything in front of the hand.</summary>
+    public class SteamBlast : ProstheticAbility
+    {
+        float readyTime;
+
+        protected override void Activate()
+        {
+            if (Time.time < readyTime) return;
+            readyTime = Time.time + 0.6f;
+            float L = P.WorldLength;
+            Vector2 dir = P.AxisDown;
+            Vector2 hand = P.TipWorld;
+            P.Play(Res.Steam);
+            FX.Spray(Res.Puff, hand, dir, 22f, new Color(0.95f, 0.95f, 0.95f, 0.75f), 18, L * 3.5f, L * 0.1f, L * 0.7f, 0.9f, -L * 0.8f, P.Renderer);
+            FX.Spray(Res.Puff, hand, dir, 40f, new Color(0.8f, 0.82f, 0.85f, 0.5f), 10, L * 2f, L * 0.15f, L * 0.9f, 1.3f, -L * 0.5f, P.Renderer);
+            FX.Blast(hand + dir * L * 0.45f, L * 0.55f, 11f, P, false);
+            P.TipBody.velocity -= dir * 3f;
+        }
+    }
+
+    /// <summary>Tesla arm: arcs chain lightning through up to four nearby things.</summary>
+    public class TeslaZap : ProstheticAbility
+    {
+        static readonly Color Arc = new Color(0.78f, 0.68f, 1f, 1f);
+        float readyTime;
+
+        protected override void Activate()
+        {
+            if (Time.time < readyTime) return;
+            readyTime = Time.time + 0.5f;
+            float L = P.WorldLength;
+            Vector2 from = P.TipWorld;
+            P.Play(Res.Zap);
+            FX.Particle(Res.Glow, from, Vector2.zero, Arc, L * 0.7f, L * 0.1f, 0.15f, 0f, 0f, P.Renderer);
+
+            System.Collections.Generic.HashSet<Rigidbody2D> hit = new System.Collections.Generic.HashSet<Rigidbody2D>();
+            for (int jump = 0; jump < 4; jump++)
+            {
+                Rigidbody2D next = null;
+                Vector2 nextPoint = Vector2.zero;
+                float best = float.MaxValue;
+                foreach (Collider2D c in Physics2D.OverlapCircleAll(from, L * 2.2f, P.CollisionMask))
+                {
+                    Rigidbody2D rb = c.attachedRigidbody;
+                    if (c.isTrigger || rb == null || rb.bodyType != RigidbodyType2D.Dynamic || hit.Contains(rb) || P.IsOwnBody(c)) continue;
+                    Vector2 point = c.ClosestPoint(from);
+                    float d = Vector2.Distance(point, from);
+                    if (d < best)
+                    {
+                        best = d;
+                        next = rb;
+                        nextPoint = point;
+                    }
+                }
+                if (next == null) break;
+                hit.Add(next);
+                Bolt(from, nextPoint, L);
+                Vector2 push = (nextPoint - from).normalized;
+                next.AddForce(push * 6f * Mathf.Min(next.mass, 6f), ForceMode2D.Impulse);
+                next.angularVelocity += UnityEngine.Random.Range(-400f, 400f);
+                if (UnityEngine.Random.value < 0.25f) next.SendMessage("BreakBone", SendMessageOptions.DontRequireReceiver);
+                FX.Burst(Res.Spark, nextPoint, Arc, 8, L * 3f, L * 0.05f, 0.3f, P.Renderer);
+                from = nextPoint;
+            }
+            if (hit.Count == 0)
+            {
+                // Nothing in reach: crackle into thin air.
+                Bolt(from, from + (Vector2)(Quaternion.Euler(0f, 0f, UnityEngine.Random.Range(-40f, 40f)) * P.AxisDown) * L * 0.8f, L);
+            }
+        }
+
+        /// <summary>A jagged lightning bolt drawn from short-lived glow particles.</summary>
+        void Bolt(Vector2 a, Vector2 b, float L)
+        {
+            Vector2 d = b - a;
+            float length = d.magnitude;
+            if (length < 0.001f) return;
+            Vector2 side = new Vector2(-d.y, d.x) / length;
+            int steps = Mathf.Clamp((int)(length / (L * 0.045f)), 4, 60);
+            float wander = 0f;
+            for (int i = 0; i <= steps; i++)
+            {
+                float t = i / (float)steps;
+                wander = Mathf.Clamp(wander + UnityEngine.Random.Range(-1f, 1f) * L * 0.05f, -L * 0.12f, L * 0.12f);
+                float taper = Mathf.Sin(t * Mathf.PI); // pinned at both ends
+                Vector2 p = a + d * t + side * wander * taper;
+                FX.Particle(Res.Glow, p, Vector2.zero, Arc, L * 0.09f, 0f, 0.14f, 0f, 0f, P.Renderer);
+                if (i % 3 == 0) FX.Particle(Res.Spark, p, Vector2.zero, Color.white, L * 0.04f, 0f, 0.1f, 0f, 0f, P.Renderer);
+            }
         }
     }
 

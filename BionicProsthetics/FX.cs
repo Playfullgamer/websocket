@@ -7,10 +7,10 @@ namespace BionicProsthetics
     public static class Res
     {
         public static Sprite Spark, Glow, Puff, Plasma, Ring, Beam;
-        public static Sprite PogoSquash, ClawClosed;
+        public static Sprite PogoSquash, ClawClosed, LoaderClawClosed;
         public static Sprite[] DrillFrames;
         public static AudioClip Attach, Detach, PlasmaFire, PlasmaHit, Punch, Boing, Spring, Leap,
-            Grab, Release, DrillLoop, RocketLoop, RocketIgnite, Click, Bling;
+            Grab, Release, DrillLoop, RocketLoop, RocketIgnite, Click, Bling, Steam, Zap;
 
         public static void Load()
         {
@@ -22,6 +22,7 @@ namespace BionicProsthetics
             Beam = ModAPI.LoadSprite("fx/beam.png");
             PogoSquash = ModAPI.LoadSprite("sprites/pogo_leg_squash.png");
             ClawClosed = ModAPI.LoadSprite("sprites/claw_closed.png");
+            LoaderClawClosed = ModAPI.LoadSprite("sprites/loader_arm_lower_closed.png");
             DrillFrames = new Sprite[]
             {
                 ModAPI.LoadSprite("sprites/drill_arm_0.png"),
@@ -44,6 +45,8 @@ namespace BionicProsthetics
             RocketIgnite = ModAPI.LoadSound("sfx/rocket_ignite.wav");
             Click = ModAPI.LoadSound("sfx/click.wav");
             Bling = ModAPI.LoadSound("sfx/bling.wav");
+            Steam = ModAPI.LoadSound("sfx/steam.wav");
+            Zap = ModAPI.LoadSound("sfx/zap.wav");
         }
     }
 
