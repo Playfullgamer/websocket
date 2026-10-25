@@ -22,7 +22,7 @@ The prosthetics get their own **Prosthetics** tab in the spawn menu (if the game
 | Forearm | lower arm + hand | the **upper arm** |
 | Full arm | the whole arm | the **chest** |
 | Lower leg | lower leg + foot | the **upper leg** |
-| Foot | the foot | the **lower leg** (ankle) |
+| Foot | the foot | the **lower leg** (ankle) — sized heel-to-toe to the real foot, sole on the floor |
 | Full leg | the whole leg | the **hips** |
 | Modular upper arm | the upper arm | the **chest**, then plug any forearm into its elbow |
 | Modular thigh | the upper leg | the **hips**, then plug any lower leg into its knee |

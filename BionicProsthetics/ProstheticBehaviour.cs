@@ -733,6 +733,77 @@ namespace BionicProsthetics
             return toNextJoint ? min : max;
         }
 
+        /// <summary>Heel-to-toe length and ankle-to-sole drop of a foot that is still attached to its shin.</summary>
+        static bool MeasureFootOn(Dictionary<string, LimbBehaviour> map, string side, out float span, out float drop)
+        {
+            span = drop = 0f;
+            LimbBehaviour shin = Get(map, "LowerLeg" + side);
+            LimbBehaviour foot = Get(map, "Foot" + side);
+            Vector2 ankle;
+            float min, max;
+            if (!HingePoint(foot, shin, out ankle) || !Extremes(foot, ankle, foot.transform.right, out min, out max)) return false;
+            span = max - min;
+            drop = Reach(BodyOf(foot), ankle, DownOf(shin));
+            return span > 0.001f;
+        }
+
+        /// <summary>
+        /// Size of the foot being replaced: the healthy foot on the other side, else the same foot on a complete
+        /// reference body scaled to this person (read off its standing pose if the prefab has no joints).
+        /// </summary>
+        bool MeasureRealFoot(PersonBehaviour person, Dictionary<string, LimbBehaviour> limbs, string twinSide, string side,
+            Component anchor, Vector2 anchorLocal, out float span, out float drop)
+        {
+            if (twinSide != null && MeasureFootOn(limbs, twinSide, out span, out drop)) return true;
+            span = drop = 0f;
+            LimbBehaviour sizeRef = Get(limbs, "LowerBody");
+            if (person == null || sizeRef == null) return false;
+            string s = side ?? "";
+            foreach (KeyValuePair<Dictionary<string, LimbBehaviour>, bool> reference in ReferenceBodies(person))
+            {
+                LimbBehaviour refSize = Get(reference.Key, "LowerBody");
+                if (refSize == null) continue;
+                float ratio = Mathf.Abs(sizeRef.transform.lossyScale.y) / Mathf.Max(0.0001f, Mathf.Abs(refSize.transform.lossyScale.y));
+                bool found = MeasureFootOn(reference.Key, s, out span, out drop);
+                if (!found && reference.Value)
+                {
+                    // Prefab without joints: the ankle is where we'd attach on its shin, in its standing pose.
+                    LimbBehaviour refShin = anchor is LimbBehaviour ? Get(reference.Key, anchor.name) : null;
+                    LimbBehaviour refFoot = Get(reference.Key, "Foot" + s);
+                    float min, max, dmin, dmax;
+                    if (refShin != null && refFoot != null)
+                    {
+                        Vector2 ankle = refShin.transform.TransformPoint(anchorLocal);
+                        if (Extremes(refFoot, ankle, refFoot.transform.right, out min, out max)
+                            && Extremes(refFoot, ankle, DownOf(refShin), out dmin, out dmax))
+                        {
+                            span = max - min;
+                            drop = Mathf.Max(0f, dmax);
+                            found = span > 0.001f;
+                        }
+                    }
+                }
+                if (!found) continue;
+                span *= ratio;
+                drop *= ratio;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>This foot prosthetic's heel-to-toe length and socket-to-sole drop at its current scale.</summary>
+        bool MeasureOwnFoot(Vector2 attachLocal, out float span, out float drop)
+        {
+            Physics2D.SyncTransforms();
+            Vector2 attach = transform.TransformPoint(attachLocal);
+            float min, max;
+            span = drop = 0f;
+            if (!Extremes(Body, attach, transform.right, out min, out max)) return false;
+            span = max - min;
+            drop = Reach(Body, attach, -(Vector2)transform.up);
+            return span > 0.001f;
+        }
+
         /// <summary>This prosthetic measured the same way as MeasureTwin, at its current scale.</summary>
         float MeasureSelf(Vector2 attachLocal)
         {
@@ -812,6 +883,21 @@ namespace BionicProsthetics
             {
                 expected = ExpectedLength(limbs, anchor, twin, twinSide);
                 scale = expected > 0.01f ? Mathf.Clamp(expected / ownLength, 0.02f, 50f) : Mathf.Abs(transform.localScale.y);
+            }
+            if (Slot == ProstheticSlot.Foot)
+            {
+                // A foot is mostly length, not height (the real one is long and flat with the ankle almost on the
+                // sole), so match heel-to-toe length, then sit it so its sole lands where the real sole did - the
+                // boot's cuff just rides up over the end of the shin.
+                float footSpan, footDrop, ownSpan, ownDrop;
+                if (MeasureRealFoot(person, limbs, twinSide, side, anchor, anchorLocal, out footSpan, out footDrop)
+                    && MeasureOwnFoot(attachLocal, out ownSpan, out ownDrop))
+                {
+                    float current = Mathf.Abs(transform.localScale.y);
+                    scale = Mathf.Clamp(current * footSpan / ownSpan, 0.02f, 50f);
+                    float dropAfter = ownDrop * scale / current;
+                    attachLocal += Vector2.down * ((dropAfter - footDrop) / scale);
+                }
             }
             float facing = Mathf.Sign(anchor.transform.lossyScale.x);
             transform.localScale = new Vector3(facing * scale, scale, 1f);
