@@ -8,8 +8,38 @@ namespace Mod
     public class Mod
     {
         static Category category;
+        static int registered;
+        static string firstError;
+        static int failed;
 
         public static void Main()
+        {
+            registered = 0;
+            failed = 0;
+            firstError = null;
+            try
+            {
+                Load();
+            }
+            catch (Exception e)
+            {
+                Fail("startup", e);
+            }
+            // Always say how loading went, so a problem shows up in game instead of as an empty tab.
+            if (failed == 0)
+                ModAPI.Notify("Bionic Prosthetics: " + registered + " prosthetics ready in the Prosthetics tab");
+            else
+                ModAPI.Notify("Bionic Prosthetics: " + registered + " loaded, " + failed + " failed. First error: " + firstError);
+        }
+
+        static void Fail(string what, Exception e)
+        {
+            failed++;
+            if (firstError == null) firstError = what + " - " + e.GetType().Name + ": " + e.Message;
+            Debug.LogError("[Bionic Prosthetics] " + what + " failed: " + e);
+        }
+
+        static void Load()
         {
             Res.Load();
             try { ProstheticBehaviour.SegmentPrefab = ModAPI.FindSpawnable("Brick").Prefab; }
@@ -207,6 +237,21 @@ namespace Mod
         }
 
         static void Add(string name, string sprite, string thumb, ProstheticSlot slot, Vector2 attach, Vector2 tip, string material,
+            string description, Action<ProstheticBehaviour> setup)
+        {
+            // Each item registers on its own, so one broken item can't take the rest of the mod down with it.
+            try
+            {
+                Register(name, sprite, thumb, slot, attach, tip, material, description, setup);
+                registered++;
+            }
+            catch (Exception e)
+            {
+                Fail(name, e);
+            }
+        }
+
+        static void Register(string name, string sprite, string thumb, ProstheticSlot slot, Vector2 attach, Vector2 tip, string material,
             string description, Action<ProstheticBehaviour> setup)
         {
             Sprite main = ModAPI.LoadSprite("sprites/" + sprite + ".png");
