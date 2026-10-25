@@ -23,6 +23,16 @@ namespace BionicProsthetics
 
         protected abstract void Activate();
 
+        /// <summary>Something hit part of the prosthetic (part = the main body or the lower segment).</summary>
+        public virtual void OnImpact(Collision2D collision, Rigidbody2D part)
+        {
+        }
+
+        protected static bool IsPerson(Rigidbody2D body)
+        {
+            return body != null && body.GetComponent<LimbBehaviour>() != null;
+        }
+
         protected Collider2D FindTarget(Vector2 point, float radius)
         {
             Collider2D best = null;
@@ -90,14 +100,23 @@ namespace BionicProsthetics
         }
     }
 
-    /// <summary>Pirate hook and hydraulic claw: latch onto whatever the tip touches (walls too), activate again to let go.</summary>
+    /// <summary>
+    /// Hooks and claws. Activate to latch onto whatever the tip touches - people, loose objects, even walls -
+    /// and again to let go. Impalers (hooks) also sink into anything they're swung into hard enough.
+    /// </summary>
     public class Grabber : ProstheticAbility
     {
         public Sprite ClosedSprite;
+        /// <summary>Hooks: a hard swing into something sticks the point in; activate (or a hard yank) frees it.</summary>
+        public bool Impales;
 
         Sprite openSprite;
-        FixedJoint2D grip;
-        bool grippedBody;
+        Joint2D grip;
+        bool holding;
+        bool holdingBody; // false when latched onto the world itself (a wall or the floor)
+        bool impaled;
+        Rigidbody2D held;
+        float readyTime;
 
         void Start()
         {
@@ -106,12 +125,12 @@ namespace BionicProsthetics
 
         protected override void Activate()
         {
-            if (grip != null)
+            if (holding)
             {
                 Release(true);
                 return;
             }
-            Collider2D target = FindTarget(P.TipWorld, P.WorldLength * 0.14f);
+            Collider2D target = FindGrabTarget();
             if (target == null)
             {
                 // Snap shut on thin air for feedback.
@@ -119,41 +138,114 @@ namespace BionicProsthetics
                 P.Play(Res.Release, 0.6f);
                 return;
             }
-            grip = P.TipTransform.gameObject.AddComponent<FixedJoint2D>();
-            grip.autoConfigureConnectedAnchor = true;
-            grip.enableCollision = false;
-            grip.anchor = P.TipLocal;
-            grip.connectedBody = target.attachedRigidbody; // null = hold on to the world itself
-            grippedBody = target.attachedRigidbody != null;
+            FixedJoint2D clamp = P.TipTransform.gameObject.AddComponent<FixedJoint2D>();
+            clamp.autoConfigureConnectedAnchor = true;
+            clamp.enableCollision = false;
+            clamp.anchor = P.TipLocal;
+            clamp.connectedBody = target.attachedRigidbody; // null = hold on to the world itself
+            Hold(clamp, target.attachedRigidbody, false);
             if (ClosedSprite != null) P.TipRenderer.sprite = ClosedSprite;
             P.Play(Res.Grab);
-            FX.Burst(Res.Spark, P.TipWorld, new Color(1f, 0.9f, 0.6f), 6, P.WorldLength * 2f, P.WorldLength * 0.05f, 0.25f, P.Renderer);
+            float L = P.WorldLength;
+            if (IsPerson(held))
+            {
+                // Clamping down on someone: a hard squeeze they feel.
+                held.angularVelocity += UnityEngine.Random.Range(-300f, 300f);
+                FX.Blood(P.TipWorld, P.AxisDown, 5, L, P.Renderer);
+            }
+            FX.Burst(Res.Spark, P.TipWorld, new Color(1f, 0.9f, 0.6f), 6, L * 2f, L * 0.05f, 0.25f, P.Renderer);
+        }
+
+        /// <summary>People and loose objects first; the floor or a wall only when nothing else is in reach.</summary>
+        Collider2D FindGrabTarget()
+        {
+            Vector2 tip = P.TipWorld;
+            float radius = P.WorldLength * 0.22f;
+            Collider2D best = null;
+            float bestScore = float.MaxValue;
+            foreach (Collider2D c in Physics2D.OverlapCircleAll(tip, radius, P.CollisionMask))
+            {
+                if (c.isTrigger || P.IsOwnBody(c)) continue;
+                bool loose = c.attachedRigidbody != null && c.attachedRigidbody.bodyType == RigidbodyType2D.Dynamic;
+                float score = Vector2.Distance(c.ClosestPoint(tip), tip) + (loose ? 0f : radius);
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    best = c;
+                }
+            }
+            return best;
+        }
+
+        public override void OnImpact(Collision2D collision, Rigidbody2D part)
+        {
+            if (!Impales || holding || part != P.TipBody || Time.time < readyTime) return;
+            Rigidbody2D target = collision.rigidbody;
+            if (target == null || target.bodyType != RigidbodyType2D.Dynamic || P.IsOwnBody(collision.collider)) return;
+            float L = P.WorldLength;
+            if (collision.relativeVelocity.magnitude < L * 5f) return; // it takes a real swing
+            Vector2 point = collision.contactCount > 0 ? collision.GetContact(0).point : P.TipWorld;
+            if (Vector2.Distance(point, P.TipWorld) > L * 0.3f) return; // only the point impales
+
+            // A hinge, so whatever is skewered hangs and swings off the hook.
+            HingeJoint2D skewer = P.TipTransform.gameObject.AddComponent<HingeJoint2D>();
+            skewer.autoConfigureConnectedAnchor = true;
+            skewer.enableCollision = false;
+            skewer.anchor = P.TipTransform.InverseTransformPoint(point);
+            skewer.connectedBody = target;
+            float gravity = Mathf.Max(1f, Physics2D.gravity.magnitude);
+            skewer.breakForce = Mathf.Max(150f, (target.mass + P.TipBody.mass) * gravity * 25f); // a hard yank tears it out
+            Hold(skewer, target, true);
+            P.Play(Res.Impale);
+            Vector2 spray = collision.relativeVelocity.sqrMagnitude > 0.01f ? collision.relativeVelocity.normalized : -P.AxisDown;
+            if (IsPerson(target)) FX.Blood(point, spray, 16, L, P.Renderer);
+            else FX.Burst(Res.Spark, point, new Color(0.8f, 0.7f, 0.5f), 8, L * 2f, L * 0.05f, 0.3f, P.Renderer);
+        }
+
+        void Hold(Joint2D joint, Rigidbody2D body, bool skewered)
+        {
+            grip = joint;
+            held = body;
+            impaled = skewered;
+            holdingBody = body != null;
+            holding = true;
         }
 
         IEnumerator Snap()
         {
             P.TipRenderer.sprite = ClosedSprite;
             yield return new WaitForSeconds(0.2f);
-            if (grip == null) P.TipRenderer.sprite = openSprite;
+            if (!holding) P.TipRenderer.sprite = openSprite;
         }
 
         void Release(bool sound)
         {
-            if (grip != null) Destroy(grip);
+            if (grip != null)
+            {
+                grip.enabled = false;
+                Destroy(grip);
+            }
+            if (impaled && IsPerson(held)) FX.Blood(P.TipWorld, -P.AxisDown, 8, P.WorldLength, P.Renderer);
             grip = null;
+            held = null;
+            impaled = false;
+            holding = false;
+            readyTime = Time.time + 0.5f; // don't instantly re-skewer what we just pulled out of
             if (ClosedSprite != null) P.TipRenderer.sprite = openSprite;
             if (sound) P.Play(Res.Release);
         }
 
         void FixedUpdate()
         {
+            if (!holding) return;
+            // Joint gone: torn out by a hard yank (or deleted).
+            if (grip == null)
+            {
+                Release(true);
+                return;
+            }
             // The thing we held was deleted: let go rather than pin ourselves to the world.
-            if (grip != null && grippedBody && grip.connectedBody == null) Release(false);
-        }
-
-        void OnJointBreak2D(Joint2D broken)
-        {
-            if (broken == grip) Release(true);
+            if (holdingBody && held == null) Release(false);
         }
     }
 
@@ -351,6 +443,7 @@ namespace BionicProsthetics
                     float m = Mathf.Min(rb.mass, 6f);
                     rb.AddForceAtPosition((dir * 40f + side * UnityEngine.Random.Range(-25f, 25f)) * m, tip);
                     if (boneTimer <= 0f) rb.SendMessage("BreakBone", SendMessageOptions.DontRequireReceiver);
+                    if (sparkTimer <= 0f && IsPerson(rb)) FX.Blood(tip, -dir, 3, L, P.Renderer);
                 }
                 else
                 {

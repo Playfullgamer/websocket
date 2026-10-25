@@ -30,11 +30,16 @@ It clicks into place with a servo sound. It is sized by measuring the wearer's h
 (hip, knee, ankle down to the sole; shoulder, elbow, fingertips), so feet reach the floor exactly like the real foot.
 If there is no healthy limb to copy (say both legs are gone), it uses the person's own body size instead: a normal
 human's limb-to-torso proportions, read from the game's Human, scaled to this person's torso. It is
-and drawn in the right layer: front arms over the body and legs, back arms behind everything. The wearer's own body won't
+drawn in the right layer: front arms over the body and legs, back arms behind everything. The wearer's own body won't
 collide with it. If you touch the wrong body part of someone it would fit, a hint tells you where it goes.
 
 * **Activate** (F) to use its ability.
 * Right-click → **Detach prosthetic** to take it off.
+* **Hooks impale:** swing the Pirate Hook or Pirate Arm hard into someone (or something) and the point sinks in and
+  sticks, with a spurt of blood - whatever is skewered hangs and swings off the hook. Activate to pull it out; a hard
+  enough yank tears it free on its own.
+* **Claws and hooks grab people:** activate to clamp onto whatever is at the tip. Arms, legs, heads and loose objects
+  are picked before the floor or a wall, so grabbing a person is reliable - and they get a hard squeeze.
 * **Modular builds:** a missing arm doesn't have to get a ready-made full arm. Fit a *Modular Upper Arm*, then
   touch any forearm prosthetic (hook, claw, plasma cannon, drill, flashlight, golden hand) to its elbow socket.
   Thighs work the same with peg legs, running blades and pogo springs. You can also assemble the pieces on the
@@ -57,19 +62,19 @@ collide with it. If you touch the wrong body part of someone it would fit, a hin
 | ![](thumbs/medical_leg.png) | Medical Prosthetic Leg | full leg | — (working hydraulic knee, fresh sneakers) |
 | ![](thumbs/cyber_leg.png) | Cyber Leg MK-II | full leg | hydraulic leap + shockwave; glowing reactor knee joint |
 | ![](thumbs/rocket_leg.png) | Rocket Leg | full leg | toggle thruster (with flame, smoke and a light); jointed knee |
-| ![](thumbs/hook.png) | Pirate Hook | forearm | hook onto objects *or walls* to hang from them; activate again to let go |
-| ![](thumbs/claw.png) | Hydraulic Claw | forearm | clamp onto things (open/closed animation) |
+| ![](thumbs/hook.png) | Pirate Hook | forearm | impales on a hard swing; activate to hook onto people, objects or walls |
+| ![](thumbs/claw.png) | Hydraulic Claw | forearm | clamp onto people and things (open/closed animation) |
 | ![](thumbs/medical_arm.png) | Medical Prosthetic Arm | full arm | — (jointed elbow, robotic hand) |
 | ![](thumbs/cyber_arm.png) | Cyber Arm MK-II | full arm | powered elbow; rocket punch that sends people flying and can break bones |
 | ![](thumbs/plasma_cannon.png) | Plasma Arm Cannon | forearm | fires glowing plasma bolts |
-| ![](thumbs/drill_arm.png) | Drill Arm | forearm | toggle a spinning drill (animated, sparks, grinds and shoves) |
+| ![](thumbs/drill_arm.png) | Drill Arm | forearm | toggle a spinning drill (sparks on metal, blood on people) |
 | ![](thumbs/flashlight_hand.png) | Flashlight Hand | forearm | toggle a light with a visible beam |
 | ![](thumbs/golden_hand.png) | 24K Golden Hand | forearm | glints all the time; activate for a shower of sparkles |
 | ![](thumbs/steampunk_arm.png) | Steampunk Arm | full arm | vents a scalding blast of steam |
 | ![](thumbs/tesla_arm.png) | Tesla Arm | full arm | chain lightning that arcs through up to 4 things |
-| ![](thumbs/loader_arm.png) | Loader Claw Arm | full arm | big hydraulic claw: clamp onto objects or walls |
+| ![](thumbs/loader_arm.png) | Loader Claw Arm | full arm | big hydraulic claw: clamp onto people, objects or walls |
 | ![](thumbs/heavy_cannon_arm.png) | Heavy Plasma Arm | full arm | fires huge plasma bolts |
-| ![](thumbs/pirate_arm.png) | Pirate Arm | full arm | carved oak arm with a hook: hook on / let go |
+| ![](thumbs/pirate_arm.png) | Pirate Arm | full arm | carved oak arm with a hook: impales on a hard swing, hook on / let go |
 | ![](thumbs/medical_arm_mount.png) | Modular Upper Arm (Medical / Cyber / Steampunk / Pirate) | upper arm | takes any forearm prosthetic |
 | ![](thumbs/medical_leg_mount.png) | Modular Thigh (Medical / Cyber / Rocket) | upper leg | takes any lower-leg prosthetic |
 

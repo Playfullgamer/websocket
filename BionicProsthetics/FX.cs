@@ -10,7 +10,7 @@ namespace BionicProsthetics
         public static Sprite PogoSquash, ClawClosed, LoaderClawClosed;
         public static Sprite[] DrillFrames;
         public static AudioClip Attach, Detach, PlasmaFire, PlasmaHit, Punch, Boing, Spring, Leap,
-            Grab, Release, DrillLoop, RocketLoop, RocketIgnite, Click, Bling, Steam, Zap;
+            Grab, Release, DrillLoop, RocketLoop, RocketIgnite, Click, Bling, Steam, Zap, Impale;
 
         public static void Load()
         {
@@ -47,6 +47,7 @@ namespace BionicProsthetics
             Bling = ModAPI.LoadSound("sfx/bling.wav");
             Steam = ModAPI.LoadSound("sfx/steam.wav");
             Zap = ModAPI.LoadSound("sfx/zap.wav");
+            Impale = ModAPI.LoadSound("sfx/impale.wav");
         }
     }
 
@@ -137,6 +138,19 @@ namespace BionicProsthetics
             {
                 Vector2 v = (Vector2)(Quaternion.Euler(0f, 0f, Random.Range(-spreadDegrees, spreadDegrees)) * dir) * speed * Random.Range(0.5f, 1f);
                 Particle(sprite, pos, v, tint, size * Random.Range(0.7f, 1.2f), endSize, life * Random.Range(0.7f, 1.2f), gravity, 3f, sortAbove);
+            }
+        }
+
+        /// <summary>A spurt of blood droplets that arc and fall; L is a size reference (the prosthetic's length).</summary>
+        public static void Blood(Vector2 pos, Vector2 dir, int count, float L, SpriteRenderer sortAbove)
+        {
+            Color dark = new Color(0.42f, 0.02f, 0.03f, 1f);
+            Color bright = new Color(0.78f, 0.06f, 0.07f, 1f);
+            for (int i = 0; i < count; i++)
+            {
+                Vector2 v = (Vector2)(Quaternion.Euler(0f, 0f, Random.Range(-50f, 50f)) * dir) * L * Random.Range(1.5f, 4f);
+                Particle(Res.Spark, pos, v, Color.Lerp(dark, bright, Random.value), L * Random.Range(0.03f, 0.07f), 0f,
+                    Random.Range(0.4f, 0.8f), L * 9f, 1f, sortAbove);
             }
         }
 

@@ -165,6 +165,11 @@ def main():
     buzz = square(2 * np.pi * 120 * t) * 0.25 + saw(2 * np.pi * 240 * t) * 0.15
     crack = highpass(noise(0.5), 2500) * (rng.uniform(0, 1, len(t)) > 0.75) * 0.9
     save("zap.wav", mix((buzz + crack) * env(0.5, 0.001, 7), highpass(noise(0.03), 3000) * env(0.03, 0.0005, 120)), peak=0.6)
+    # impale: sharp metal stab into a wet, meaty thunk
+    stab = highpass(noise(0.03), 3500) * env(0.03, 0.0005, 150)
+    squelch = lowpass(noise(0.35), 900) * env(0.35, 0.004, 9) * (0.6 + 0.4 * np.sin(2 * np.pi * 23 * t_axis(0.35)))
+    save("impale.wav", mix(stab * 0.8, pad(clunk(0.22, 70), 0.01), pad(squelch * 0.9, 0.02),
+                           pad(sweep(320, 90, 0.18) * env(0.18, 0.002, 18) * 0.4, 0.01)), peak=0.65)
     save("bling.wav", mix(clunk(0.08, 300) * 0.4, pad(bells * 0.5, 0.05), pad(bells * 0.35, 0.16)), peak=0.5)
 
 

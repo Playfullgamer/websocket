@@ -118,12 +118,12 @@ namespace Mod
             // ---------------------------------------------------------------- arms
             Add("Pirate Hook", "hook", ProstheticSlot.Forearm, SpriteData.HookAttach, SpriteData.HookTip, "Metal",
                 "A polished steel hook on a leather cuff. Touch it to the UPPER ARM of anyone missing a forearm. " +
-                "Activate to hook onto whatever it touches - even walls - and again to let go.",
-                p => { p.gameObject.AddComponent<Grabber>(); });
+                "Swing it hard into someone to impale them on it. Activate to hook onto whatever it touches - people, objects, even walls - and again to let go.",
+                p => { p.gameObject.AddComponent<Grabber>().Impales = true; });
 
             Add("Hydraulic Claw", "claw_open", "claw", ProstheticSlot.Forearm, SpriteData.ClawAttach, SpriteData.ClawTip, "Metal",
                 "Industrial pincer arm. Touch it to the UPPER ARM of anyone missing a forearm. " +
-                "Activate to clamp onto whatever it touches, and again to release.",
+                "Activate to clamp onto whatever it touches - people included - and again to release.",
                 p => { p.gameObject.AddComponent<Grabber>().ClosedSprite = Res.ClawClosed; });
 
             Add("Medical Prosthetic Arm", "medical_arm_upper", "medical_arm", ProstheticSlot.FullArm, SpriteData.MedicalArmAttach, SpriteData.MedicalArmTip, "Plastic",
@@ -180,7 +180,7 @@ namespace Mod
 
             Add("Loader Claw Arm", "loader_arm_upper", "loader_arm", ProstheticSlot.FullArm, SpriteData.LoaderArmAttach, SpriteData.LoaderArmTip, "Metal",
                 "Industrial hydraulic arm with a heavy-duty claw. Touch it to the CHEST (upper body) of anyone missing an entire arm. " +
-                "Activate to clamp onto whatever it touches (even walls), and again to let go.",
+                "Activate to clamp onto whatever it touches - people, objects, even walls - and again to let go.",
                 p =>
                 {
                     p.BuildSegment(loaderForearm, SpriteData.LoaderArmJoint, SpriteData.LoaderArmLowerJoint, SpriteData.LoaderArmTip);
@@ -198,11 +198,12 @@ namespace Mod
 
             Add("Pirate Arm", "pirate_arm_upper", "pirate_arm", ProstheticSlot.FullArm, SpriteData.PirateArmAttach, SpriteData.PirateArmTip, "Wood",
                 "A carved oak arm ending in a hook, for the captain who lost more than a hand. " +
-                "Touch it to the CHEST (upper body) of anyone missing an entire arm. Activate to hook on, again to let go.",
+                "Touch it to the CHEST (upper body) of anyone missing an entire arm. Swing it hard into someone to impale them. " +
+                "Activate to hook on, again to let go.",
                 p =>
                 {
                     p.BuildSegment(pirateForearm, SpriteData.PirateArmJoint, SpriteData.PirateArmLowerJoint, SpriteData.PirateArmTip);
-                    p.gameObject.AddComponent<Grabber>();
+                    p.gameObject.AddComponent<Grabber>().Impales = true;
                 });
 
             // ---------------------------------------------------------------- modular upper arms and thighs

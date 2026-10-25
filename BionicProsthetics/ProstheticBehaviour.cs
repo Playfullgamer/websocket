@@ -240,7 +240,14 @@ namespace BionicProsthetics
 
         void OnCollisionEnter2D(Collision2D collision)
         {
+            NotifyImpact(collision, Body);
             OnPartContact(collision.collider, collision.relativeVelocity.magnitude);
+        }
+
+        /// <summary>Lets abilities react to hits on any part (e.g. a hook impaling what it's swung into).</summary>
+        public void NotifyImpact(Collision2D collision, Rigidbody2D part)
+        {
+            foreach (ProstheticAbility ability in GetComponents<ProstheticAbility>()) ability.OnImpact(collision, part);
         }
 
         void OnCollisionStay2D(Collision2D collision)
@@ -1190,7 +1197,9 @@ namespace BionicProsthetics
 
         void OnCollisionEnter2D(Collision2D collision)
         {
-            if (Owner != null) Owner.OnPartContact(collision.collider, collision.relativeVelocity.magnitude);
+            if (Owner == null) return;
+            Owner.NotifyImpact(collision, GetComponent<Rigidbody2D>());
+            Owner.OnPartContact(collision.collider, collision.relativeVelocity.magnitude);
         }
 
         void OnCollisionStay2D(Collision2D collision)
