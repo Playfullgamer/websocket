@@ -159,6 +159,42 @@ namespace Mod
                 "Activate to show off.",
                 p => { p.gameObject.AddComponent<Sparkle>(); });
 
+            // ---------------------------------------------------------------- feet
+            const string footHelp = " Touch it to the LOWER LEG (ankle) of anyone missing a foot.";
+            Add("Carbon Flex Foot", "carbon_foot", ProstheticSlot.Foot, SpriteData.CarbonFootAttach, SpriteData.CarbonFootTip, "Plastic",
+                "A springy carbon-fibre foot with a heel spring." + footHelp + " Activate for a springy hop.",
+                p =>
+                {
+                    p.LockJoint = true;
+                    SpringJump s = p.gameObject.AddComponent<SpringJump>();
+                    s.Power = 6f;
+                    s.Sound = Res.Spring;
+                });
+
+            Add("Cyber Foot", "cyber_foot", ProstheticSlot.Foot, SpriteData.CyberFootAttach, SpriteData.CyberFootTip, "Metal",
+                "A chrome boot with a reactor ankle and a glowing sole." + footHelp + " Activate to stomp a shockwave.",
+                p =>
+                {
+                    p.LockJoint = true;
+                    SpringJump s = p.gameObject.AddComponent<SpringJump>();
+                    s.Power = 8f;
+                    s.Sound = Res.Leap;
+                    s.Shockwave = true;
+                    p.gameObject.AddComponent<CoreGlow>().CorePixel = new Vector2(8f, 8f);
+                });
+
+            Add("Pirate Wooden Foot", "wood_foot", ProstheticSlot.Foot, SpriteData.WoodFootAttach, SpriteData.WoodFootTip, "Wood",
+                "A carved oak foot with an iron-nailed sole, strapped on with leather." + footHelp,
+                p => { p.LockJoint = true; });
+
+            Add("Roller Skate Foot", "skate_foot", ProstheticSlot.Foot, SpriteData.SkateFootAttach, SpriteData.SkateFootTip, "Metal",
+                "Why have a foot when you can have wheels? Rolls almost without friction." + footHelp + " Activate to kick off and glide.",
+                p =>
+                {
+                    p.LockJoint = true;
+                    p.gameObject.AddComponent<SkateBoost>();
+                });
+
             // ---------------------------------------------------------------- more full arms (all with a working elbow)
             Add("Steampunk Arm", "steampunk_arm_upper", "steampunk_arm", ProstheticSlot.FullArm, SpriteData.SteampunkArmAttach, SpriteData.SteampunkArmTip, "Metal",
                 "Brass and copper, pistons and a pressure gauge. Touch it to the CHEST (upper body) of anyone missing an entire arm. " +

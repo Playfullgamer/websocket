@@ -694,6 +694,84 @@ def golden_hand():
     return c, (8, 6), (8, 42)
 
 
+# ---------------------------------------------------------------- feet
+# Socket (ankle) at the top-left, toes pointing +X like the wearer's own foot.
+
+def carbon_foot():
+    c = Canvas(28, 20)
+    cx = 8.5
+    socket(c, 1, 7, cx, 12, CARBON, strap=BLUEPAINT, buckle=STEEL, strap_row=4)
+    c.band(8, 9, 4, 13, STEEL)  # titanium ankle adapter
+    c.bolt(6, 8)
+    c.tube([(8.5, 10), (9, 13), (12, 15.5), (18, 16), (24.5, 15.5)], 1.9, CARBON)  # forefoot keel
+    c.tube([(8, 11), (5.5, 14), (3.5, 15.8)], 1.6, CARBON)  # heel spring
+    for x, y in catmull([(10, 12), (13, 14.4), (18, 14.8), (23, 14.4)], 6):
+        c.put(x, y, BLUEPAINT[3])
+    for x in range(3, 26):  # rubber sole
+        c.put(x, 18, RUBBER[2] if 4 < x < 25 else RUBBER[1])
+    c.outline()
+    return c, (8, 5), (14, 18)
+
+
+def cyber_foot():
+    c = Canvas(28, 20)
+    cx = 8.5
+    c.cyl(3, 1, 14, 6, GUNMETAL)  # ankle cuff
+    c.hspan(1, 3, 14, CHROME)
+    c.disk(cx, 8, 3.3, GUNMETAL[0])  # reactor ankle
+    c.disk(cx, 8, 2.3, CYAN[1])
+    c.disk(cx - 0.4, 7.6, 1.2, CYAN[3])
+    for y in range(10, 17):  # armoured boot
+        x1 = 14 + int((y - 10) * 1.7)
+        c.hspan(y, 3, min(x1, 25), CHROME, spec=(y < 13))
+    c.rect(19, 13, 24, 15, CHROME[3])  # toe cap
+    c.put(19, 13, CHROME[4])
+    c.hspan(12, 4, 13, GUNMETAL, spec=False)
+    c.rect(3, 17, 25, 17, GUNMETAL[1])
+    for x in range(4, 25):  # glowing sole
+        c.put(x, 18, CYAN[2] if x % 4 else CYAN[4])
+    c.glow([CYAN[2], CYAN[3], CYAN[4]], radius=1, alpha=80)
+    c.outline()
+    return c, (8, 4), (14, 18)
+
+
+def wood_foot():
+    c = Canvas(28, 20)
+    cx = 8.5
+    socket(c, 1, 7, cx, 12, LEATHER, strap=LEATHER, buckle=BRASS, strap_row=4)
+    c.cyl(4, 8, 13, 11, WOOD)  # carved ankle block
+    for y in range(11, 17):  # foot body
+        x1 = 13 + int((y - 11) * 2.1)
+        c.hspan(y, 3, min(x1, 24), WOOD, spec=(y < 14))
+    wood_grain(c, 8, 16, 3, 24, seed=7)
+    c.disk(23, 15.5, 1.6, WOOD[2])  # rounded toe
+    c.rect(3, 17, 24, 17, WOOD[0])
+    for x in range(4, 24, 3):  # iron sole nails
+        c.put(x, 18, STEEL[3])
+        c.put(x + 1, 18, STEEL[1])
+    c.outline()
+    return c, (8, 5), (13, 18)
+
+
+def skate_foot():
+    c = Canvas(28, 22)
+    cx = 8.5
+    socket(c, 1, 6, cx, 12, RUBBER, strap=None)
+    for y in range(7, 13):  # red skate boot
+        x1 = 13 + int((y - 7) * 1.8)
+        c.hspan(y, 3, min(x1, 23), RED, spec=(y < 10))
+    c.rect(18, 10, 23, 12, WHITE[3])  # toe cap
+    for i, x in enumerate(range(9, 17, 3)):  # laces
+        c.put(x, 8 + i, WHITE[4])
+    c.cyl(3, 13, 22, 14, STEEL)  # frame
+    for wx in (6, 12.5, 19):  # wheels
+        c.disk(wx, 17, 2.6, RUBBER[1])
+        c.disk(wx - 0.3, 16.7, 1.8, RUBBER[2])
+        c.shaded_disk(wx, 17, 1.0, STEEL)
+    c.outline()
+    return c, (8, 4), (12, 20)
+
+
 # ---------------------------------------------------------------- more full arms
 # Drawn whole with the elbow centred at y=34, then cut in two by split_limb.
 
@@ -1167,6 +1245,10 @@ def main():
         "drill_arm_2": lambda: drill_arm(2),
         "flashlight_hand": flashlight_hand,
         "golden_hand": golden_hand,
+        "carbon_foot": carbon_foot,
+        "cyber_foot": cyber_foot,
+        "wood_foot": wood_foot,
+        "skate_foot": skate_foot,
     }
     sprites, meta = {}, {}
     for name, fn in builders.items():

@@ -717,6 +717,32 @@ namespace BionicProsthetics
         }
     }
 
+    /// <summary>Roller skate foot: rolls almost without friction; activate to kick off and glide forward.</summary>
+    public class SkateBoost : ProstheticAbility
+    {
+        float readyTime;
+
+        void Start()
+        {
+            PhysicsMaterial2D wheels = new PhysicsMaterial2D("Skate wheels");
+            wheels.friction = 0.02f;
+            wheels.bounciness = 0f;
+            foreach (Collider2D c in GetComponents<Collider2D>()) c.sharedMaterial = wheels;
+        }
+
+        protected override void Activate()
+        {
+            if (Time.time < readyTime || !P.Grounded) return;
+            readyTime = Time.time + 0.4f;
+            Vector2 forward = new Vector2(Mathf.Sign(transform.localScale.x), 0f);
+            foreach (Rigidbody2D rb in P.WearerBodies()) rb.velocity += forward * 6f;
+            P.Play(Res.Spring, 0.7f);
+            float L = P.WorldLength;
+            FX.Spray(Res.Puff, P.TipWorld, -forward, 25f, new Color(0.85f, 0.8f, 0.7f, 0.7f), 6, L * 6f, L * 0.4f, L * 1f, 0.5f, 0f, P.Renderer);
+            FX.Spray(Res.Spark, P.TipWorld, -forward, 20f, new Color(1f, 0.85f, 0.4f), 6, L * 8f, L * 0.12f, 0f, 0.3f, 0f, P.Renderer);
+        }
+    }
+
     /// <summary>Cyber limbs: an always-on cyan core glow (no activation).</summary>
     public class CoreGlow : MonoBehaviour
     {

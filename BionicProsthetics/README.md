@@ -2,7 +2,7 @@
 
 ![banner](thumb.png)
 
-Lost a limb? Not a problem. This mod adds **26 prosthetics** with custom art that snap onto
+Lost a limb? Not a problem. This mod adds **30 prosthetics** with custom art that snap onto
 stumps, resize themselves to fit the wearer, and move within the range of a real limb.
 Most of them do something when you activate them.
 
@@ -22,14 +22,15 @@ The prosthetics get their own **Prosthetics** tab in the spawn menu (if the game
 | Forearm | lower arm + hand | the **upper arm** |
 | Full arm | the whole arm | the **chest** |
 | Lower leg | lower leg + foot | the **upper leg** |
+| Foot | the foot | the **lower leg** (ankle) |
 | Full leg | the whole leg | the **hips** |
 | Modular upper arm | the upper arm | the **chest**, then plug any forearm into its elbow |
 | Modular thigh | the upper leg | the **hips**, then plug any lower leg into its knee |
 
 It clicks into place with a servo sound. It is sized by measuring the wearer's healthy limb joint to joint
 (hip, knee, ankle down to the sole; shoulder, elbow, fingertips), so feet reach the floor exactly like the real foot.
-If there is no healthy limb to copy (say both legs are gone), it uses the person's own body size instead: a normal
-human's limb-to-torso proportions, read from the game's Human, scaled to this person's torso. It is
+If there is no healthy limb to copy (say both legs are gone), it reads where the joint sits and how long the limb is
+off a complete body - the game's Human, or anyone else in the scene - and scales that to this person's size. It is
 drawn in the right layer: front arms over the body and legs, back arms behind everything. The wearer's own body won't
 collide with it. If you touch the wrong body part of someone it would fit, a hint tells you where it goes.
 
@@ -49,8 +50,10 @@ collide with it. If you touch the wrong body part of someone it would fit, a hin
 * Worn arms move on their own. They hold a relaxed pose (hanging, elbow slightly bent) with a gentle motor, so
   you can grab and pose them freely, and moving one arm never drags the other along. On full arms you can grab
   the forearm itself, too.
-* Worn legs hold the hip and knee straight, with enough torque to bear the wearer's weight. A hard hit
-  can buckle the knee, and it springs straight again afterwards.
+* Worn legs are strong enough to carry the wearer and **walk with them**: full legs and modular thighs follow the
+  healthy leg half a stride behind, so the steps alternate like real walking. Standing, sitting or crouching, they
+  simply match the healthy leg. With no healthy leg to follow they stand straight. A hard hit can buckle the knee,
+  and it springs back afterwards.
 
 ## The prosthetics
 
@@ -62,6 +65,10 @@ collide with it. If you touch the wrong body part of someone it would fit, a hin
 | ![](thumbs/medical_leg.png) | Medical Prosthetic Leg | full leg | — (working hydraulic knee, fresh sneakers) |
 | ![](thumbs/cyber_leg.png) | Cyber Leg MK-II | full leg | hydraulic leap + shockwave; glowing reactor knee joint |
 | ![](thumbs/rocket_leg.png) | Rocket Leg | full leg | toggle thruster (with flame, smoke and a light); jointed knee |
+| ![](thumbs/carbon_foot.png) | Carbon Flex Foot | foot | springy hop |
+| ![](thumbs/cyber_foot.png) | Cyber Foot | foot | stomp shockwave; glowing sole |
+| ![](thumbs/wood_foot.png) | Pirate Wooden Foot | foot | — (carved oak, iron-nailed sole) |
+| ![](thumbs/skate_foot.png) | Roller Skate Foot | foot | rolls nearly frictionless; activate to kick off and glide |
 | ![](thumbs/hook.png) | Pirate Hook | forearm | impales on a hard swing; activate to hook onto people, objects or walls |
 | ![](thumbs/claw.png) | Hydraulic Claw | forearm | clamp onto people and things (open/closed animation) |
 | ![](thumbs/medical_arm.png) | Medical Prosthetic Arm | full arm | — (jointed elbow, robotic hand) |
@@ -82,7 +89,7 @@ collide with it. If you touch the wrong body part of someone it would fit, a hin
 
 ```
 mod.json                 mod manifest
-Main.cs                  registers the 26 items
+Main.cs                  registers the 30 items
 ProstheticBehaviour.cs   stump detection, fitting, sizing, servo joints, jointed elbows/knees, modular mounting
 Abilities.cs             activation abilities (jump, grab, cannon, punch, drill, rocket, light, bling, steam, lightning)
 FX.cs                    asset loading + lightweight particle/shockwave/blast helpers

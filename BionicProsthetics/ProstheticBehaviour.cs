@@ -11,7 +11,8 @@ namespace BionicProsthetics
         LowerLeg, // replaces LowerLeg + Foot; mounts on an UpperLeg stump or a prosthetic thigh
         FullLeg,  // replaces the whole leg, mounts on the LowerBody (hip)
         UpperArm, // modular upper arm: mounts on the UpperBody, takes any Forearm prosthetic at its elbow
-        UpperLeg  // modular thigh: mounts on the LowerBody, takes any LowerLeg prosthetic at its knee
+        UpperLeg, // modular thigh: mounts on the LowerBody, takes any LowerLeg prosthetic at its knee
+        Foot      // replaces a Foot, mounts on the LowerLeg stump (the ankle)
     }
 
     /// <summary>
@@ -74,6 +75,9 @@ namespace BionicProsthetics
         PersonBehaviour directWearer;
         float motorTorque;
         readonly Servo socketServo = new Servo();
+        HingeJoint2D twinHip;
+        bool twinHipInverted;
+        readonly GaitMirror gait = new GaitMirror();
 
         GameObject segment;
         HingeJoint2D midJoint;
@@ -96,7 +100,7 @@ namespace BionicProsthetics
 
         bool IsArm { get { return Slot == ProstheticSlot.Forearm || Slot == ProstheticSlot.FullArm || Slot == ProstheticSlot.UpperArm; } }
         /// <summary>Mounted on the torso (shoulder / hip) rather than on a stump further down the limb.</summary>
-        bool IsTorsoMounted { get { return Slot != ProstheticSlot.Forearm && Slot != ProstheticSlot.LowerLeg; } }
+        bool IsTorsoMounted { get { return Slot != ProstheticSlot.Forearm && Slot != ProstheticSlot.LowerLeg && Slot != ProstheticSlot.Foot; } }
 
         void Awake()
         {
@@ -291,6 +295,7 @@ namespace BionicProsthetics
                 case ProstheticSlot.FullArm:
                 case ProstheticSlot.UpperArm: anchorBase = "UpperBody"; replacedBase = "UpperArm"; break;
                 case ProstheticSlot.LowerLeg: anchorBase = "UpperLeg"; replacedBase = "LowerLeg"; break;
+                case ProstheticSlot.Foot: anchorBase = "LowerLeg"; replacedBase = "Foot"; break;
                 default: anchorBase = "LowerBody"; replacedBase = "UpperLeg"; break;
             }
         }
@@ -436,6 +441,7 @@ namespace BionicProsthetics
                     {
                         case ProstheticSlot.Forearm: where = "upper arm stump (or a prosthetic upper arm)"; break;
                         case ProstheticSlot.LowerLeg: where = "upper leg stump (or a prosthetic thigh)"; break;
+                        case ProstheticSlot.Foot: where = "lower leg stump (the ankle)"; break;
                         case ProstheticSlot.FullArm:
                         case ProstheticSlot.UpperArm: where = "chest"; break;
                         default: where = "hips"; break;
@@ -478,6 +484,8 @@ namespace BionicProsthetics
                     return twin != null ? LimbLength(twin) : AnchorLength(anchor) * 1.15f;
                 case ProstheticSlot.LowerLeg:
                     return twin != null ? LimbLength(twin) + LimbLength(Get(limbs, "Foot" + twinSide)) * 0.35f : AnchorLength(anchor) * 1.15f;
+                case ProstheticSlot.Foot:
+                    return twin != null ? LimbLength(twin) : AnchorLength(anchor) * 0.35f;
                 case ProstheticSlot.UpperArm:
                     return twin != null ? LimbLength(twin) : TorsoLength(limbs) * 0.65f;
                 case ProstheticSlot.UpperLeg:
@@ -512,18 +520,42 @@ namespace BionicProsthetics
         /// </summary>
         static float Reach(Rigidbody2D body, Vector2 from, Vector2 dir)
         {
-            if (body == null) return 0f;
-            float best = 0f;
-            foreach (Collider2D c in body.GetComponents<Collider2D>())
+            float min, max;
+            return body != null && Extremes(body, from, dir, out min, out max) ? Mathf.Max(0f, max) : 0f;
+        }
+
+        /// <summary>
+        /// Nearest and farthest extent of a part's shape along a direction, measured from a point. Uses its
+        /// colliders, or its sprite when it has none.
+        /// </summary>
+        static bool Extremes(Component part, Vector2 from, Vector2 dir, out float min, out float max)
+        {
+            min = float.MaxValue;
+            max = float.MinValue;
+            foreach (Collider2D c in part.GetComponents<Collider2D>())
             {
                 if (c == null || c.isTrigger || !c.enabled) continue;
                 foreach (Vector2 local in ShapePoints(c))
                 {
-                    Vector2 world = c.transform.TransformPoint(local);
-                    best = Mathf.Max(best, Vector2.Dot(world - from, dir));
+                    float d = Vector2.Dot((Vector2)c.transform.TransformPoint(local) - from, dir);
+                    min = Mathf.Min(min, d);
+                    max = Mathf.Max(max, d);
                 }
             }
-            return best;
+            if (max == float.MinValue)
+            {
+                SpriteRenderer r = part.GetComponent<SpriteRenderer>();
+                if (r == null || r.sprite == null) return false;
+                Bounds b = r.sprite.bounds;
+                foreach (Vector2 local in new Vector2[] { new Vector2(b.min.x, b.min.y), new Vector2(b.max.x, b.min.y),
+                                                          new Vector2(b.min.x, b.max.y), new Vector2(b.max.x, b.max.y) })
+                {
+                    float d = Vector2.Dot((Vector2)part.transform.TransformPoint(local) - from, dir);
+                    min = Mathf.Min(min, d);
+                    max = Mathf.Max(max, d);
+                }
+            }
+            return true;
         }
 
         /// <summary>Outline points of a collider in its own local space.</summary>
@@ -600,6 +632,7 @@ namespace BionicProsthetics
             bool hasHip = HingePoint(thigh, Get(limbs, "LowerBody"), out hip);
             bool hasKnee = HingePoint(shin, thigh, out knee);
             bool hasAnkle = HingePoint(foot, shin, out ankle);
+            if (Slot == ProstheticSlot.Foot) return hasAnkle ? Reach(BodyOf(foot), ankle, DownOf(shin)) : 0f;
             if (!hasKnee) return 0f;
             // Knee down to the sole: through the foot when there is one, otherwise to the end of the shin.
             float belowKnee = hasAnkle
@@ -611,46 +644,93 @@ namespace BionicProsthetics
             return Slot == ProstheticSlot.UpperLeg ? thighLength : thighLength + belowKnee;
         }
 
-        /// <summary>The game's Human prefab: the reference body for limb proportions.</summary>
+        /// <summary>The game's Human prefab: the reference body for where joints sit and how long limbs are.</summary>
         public static GameObject HumanPrefab;
-        static readonly Dictionary<ProstheticSlot, float> proportionCache = new Dictionary<ProstheticSlot, float>();
+        static Dictionary<string, LimbBehaviour> modelLimbs;
 
         /// <summary>
-        /// No healthy twin to copy (e.g. both legs gone): size from this person's own body instead. The limb's
-        /// length relative to the torso is measured once on the game's Human, then scaled to this person's torso,
-        /// so bigger and smaller people get proportionally bigger and smaller prosthetics.
+        /// Complete bodies to learn from when this person has no healthy twin limb (e.g. both legs gone): the
+        /// game's Human first, then anyone else in the scene. Value = true for the prefab.
         /// </summary>
-        float MeasureFromBody(Dictionary<string, LimbBehaviour> limbs)
+        IEnumerable<KeyValuePair<Dictionary<string, LimbBehaviour>, bool>> ReferenceBodies(PersonBehaviour exclude)
         {
-            float torso = TorsoLength(limbs);
-            if (torso <= 0.01f) return 0f;
-            float proportion;
-            if (!proportionCache.TryGetValue(Slot, out proportion))
+            if (modelLimbs == null && HumanPrefab != null)
+                modelLimbs = LimbMap(HumanPrefab.GetComponentInChildren<PersonBehaviour>(true), true);
+            if (modelLimbs != null && modelLimbs.Count > 0)
+                yield return new KeyValuePair<Dictionary<string, LimbBehaviour>, bool>(modelLimbs, true);
+            foreach (PersonBehaviour other in FindObjectsOfType<PersonBehaviour>())
             {
-                proportion = ProportionOf(HumanPrefab != null ? HumanPrefab.GetComponentInChildren<PersonBehaviour>(true) : null, true);
-                if (proportion > 0f) proportionCache[Slot] = proportion;
+                if (other != exclude)
+                    yield return new KeyValuePair<Dictionary<string, LimbBehaviour>, bool>(LimbMap(other), false);
             }
-            if (proportion <= 0f)
-            {
-                // No prefab to read: learn it from anyone in the scene who still has the limb.
-                foreach (PersonBehaviour other in FindObjectsOfType<PersonBehaviour>())
-                {
-                    proportion = ProportionOf(other, false);
-                    if (proportion > 0f) break;
-                }
-            }
-            return proportion > 0f ? proportion * torso : 0f;
         }
 
-        /// <summary>Limb length divided by torso length on a complete body (back side), or 0.</summary>
-        float ProportionOf(PersonBehaviour model, bool asset)
+        /// <summary>Where the replaced limb hinges on the anchor, read off a complete reference body.</summary>
+        bool ReferenceAnchorPoint(PersonBehaviour person, Component anchor, string replaced, out Vector2 local)
         {
-            if (model == null) return 0f;
-            Dictionary<string, LimbBehaviour> map = LimbMap(model, asset);
-            float torso = TorsoLength(map);
-            float limb = MeasureTwin(map, "");
-            if (torso <= 0.01f || limb <= 0.01f) limb = MeasureTwin(map, "Front");
-            return torso > 0.01f && limb > 0.01f ? limb / torso : 0f;
+            local = Vector2.zero;
+            if (replaced == null || !(anchor is LimbBehaviour)) return false;
+            foreach (KeyValuePair<Dictionary<string, LimbBehaviour>, bool> reference in ReferenceBodies(person))
+            {
+                LimbBehaviour a = Get(reference.Key, anchor.name);
+                LimbBehaviour r = Get(reference.Key, replaced);
+                if (a == null || r == null) continue;
+                bool inverted;
+                HingeJoint2D j = FindHinge(BodyOf(r), BodyOf(a), out inverted);
+                if (j == null) continue;
+                local = inverted ? j.anchor : j.connectedAnchor;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// No healthy twin to copy: measure the same limb on a complete reference body and scale it to this
+        /// person's size, so bigger and smaller people get matching prosthetics.
+        /// </summary>
+        float MeasureFromReference(PersonBehaviour person, Dictionary<string, LimbBehaviour> limbs, string side, Component anchor, Vector2 anchorLocal)
+        {
+            if (person == null) return 0f;
+            LimbBehaviour sizeRef = Get(limbs, "LowerBody");
+            if (sizeRef == null) sizeRef = Get(limbs, "UpperBody");
+            if (sizeRef == null) return 0f;
+            string s = side ?? "";
+            foreach (KeyValuePair<Dictionary<string, LimbBehaviour>, bool> reference in ReferenceBodies(person))
+            {
+                LimbBehaviour refSize = Get(reference.Key, sizeRef.name);
+                if (refSize == null) continue;
+                float length = MeasureTwin(reference.Key, s);
+                if (length <= 0.01f && reference.Value) length = RestPoseLength(reference.Key, anchor, anchorLocal, s);
+                if (length <= 0.01f) continue;
+                return length * Mathf.Abs(sizeRef.transform.lossyScale.y) / Mathf.Max(0.0001f, Mathf.Abs(refSize.transform.lossyScale.y));
+            }
+            return 0f;
+        }
+
+        /// <summary>
+        /// For a prefab without joints: the limb's length read off the Human's standing pose, from the joint
+        /// point on the anchor straight down to the tip (sole / fingertips) or to the next joint for upper pieces.
+        /// </summary>
+        float RestPoseLength(Dictionary<string, LimbBehaviour> map, Component anchor, Vector2 anchorLocal, string side)
+        {
+            LimbBehaviour refAnchor = anchor is LimbBehaviour ? Get(map, anchor.name) : null;
+            if (refAnchor == null) return 0f;
+            Vector2 start = refAnchor.transform.TransformPoint(anchorLocal);
+            Vector2 down = DownOf(refAnchor);
+            string end;
+            bool toNextJoint = false;
+            switch (Slot)
+            {
+                case ProstheticSlot.Forearm:
+                case ProstheticSlot.FullArm: end = "LowerArm"; break;
+                case ProstheticSlot.UpperArm: end = "LowerArm"; toNextJoint = true; break;
+                case ProstheticSlot.UpperLeg: end = "LowerLeg"; toNextJoint = true; break;
+                default: end = "Foot"; break;
+            }
+            LimbBehaviour endLimb = Get(map, end + side);
+            float min, max;
+            if (endLimb == null || !Extremes(endLimb, start, down, out min, out max)) return 0f;
+            return toNextJoint ? min : max;
         }
 
         /// <summary>This prosthetic measured the same way as MeasureTwin, at its current scale.</summary>
@@ -702,7 +782,9 @@ namespace BionicProsthetics
             Vector2 anchorLocal;
             if (mount != null) anchorLocal = mount.MountLocal;
             else if (twinJoint != null) anchorLocal = twinInverted ? twinJoint.anchor : twinJoint.connectedAnchor;
-            else anchorLocal = EstimateAnchorPoint(anchor);
+            // No healthy twin (e.g. both legs gone): read the joint position off a complete body rather than
+            // guessing - a guess too high on the hips is what sank the thigh into the torso and left feet short.
+            else if (!ReferenceAnchorPoint(person, anchor, replaced, out anchorLocal)) anchorLocal = EstimateAnchorPoint(anchor);
 
             // Resize uniformly so the prosthetic is as long as the limb it replaces.
             // On a modular upper arm / thigh the piece hinges from its socket rim, tucked under the elbow/knee
@@ -716,11 +798,11 @@ namespace BionicProsthetics
             }
             ownLength = Mathf.Max(0.01f, ownLength);
             // Best: measure the healthy limb joint-to-tip and ourselves the same way, so the sole lands exactly
-            // where the healthy foot does. No healthy limb: scale a normal human's proportions to this person's
-            // torso. Last resort: estimate from sprite sizes.
+            // where the healthy foot does. No healthy limb: measure a complete reference body and scale it to
+            // this person. Last resort: estimate from sprite sizes.
             float scale;
             float expected = MeasureTwin(limbs, twinSide);
-            if (expected <= 0.01f) expected = MeasureFromBody(limbs);
+            if (expected <= 0.01f) expected = MeasureFromReference(person, limbs, side, anchor, anchorLocal);
             float measured = expected > 0.01f ? MeasureSelf(attachLocal) : 0f;
             if (measured > 0.001f)
             {
@@ -795,7 +877,11 @@ namespace BionicProsthetics
             joint.limits = limits;
 
             // Arms hold a relaxed pose on their own and never copy the healthy arm (that coupled the two arms
-            // together); legs hold straight and strong enough to stand on.
+            // together). Legs are strong enough to stand on and walk with the healthy leg, half a stride behind.
+            bool walks = !IsArm && (Slot == ProstheticSlot.FullLeg || Slot == ProstheticSlot.UpperLeg);
+            twinHip = walks ? twinJoint : null;
+            twinHipInverted = twinInverted;
+            gait.Reset();
             float wearerMass = 0f;
             if (person != null)
                 foreach (Rigidbody2D rb in person.GetComponentsInChildren<Rigidbody2D>()) wearerMass += rb.mass;
@@ -883,6 +969,7 @@ namespace BionicProsthetics
             directWearer = null;
             ReplacedLimb = null;
             twinMidJoint = null;
+            twinHip = null;
             nextAttachTime = Time.time + 1.5f;
             if (announce) Play(Res.Detach);
             SendMessage("OnProstheticDetached", SendMessageOptions.DontRequireReceiver);
@@ -983,8 +1070,16 @@ namespace BionicProsthetics
             }
             socketServo.Sample(joint);
             if (!joint.useMotor) return;
-
-            socketServo.Drive(joint, 0f, motorTorque);
+            float target = 0f;
+            if (twinHip != null && twinHip.enabled && twinHip.connectedBody != null)
+            {
+                float hip = twinHipInverted ? -twinHip.jointAngle : twinHip.jointAngle;
+                bool kneeKnown = twinMidJoint != null && twinMidJoint.enabled && twinMidJoint.connectedBody != null;
+                float knee = kneeKnown ? (twinMidInverted ? -twinMidJoint.jointAngle : twinMidJoint.jointAngle) : 0f;
+                gait.Record(Time.time, hip, knee, Time.fixedDeltaTime);
+                target = gait.Hip;
+            }
+            socketServo.Drive(joint, target, motorTorque);
         }
 
         // ------------------------------------------------------------ two-piece limbs
@@ -1135,7 +1230,9 @@ namespace BionicProsthetics
                 midJoint.useMotor = false;
                 return;
             }
-            float target = IsArm ? ForwardBend(15f) : 0f;
+            float target;
+            if (IsArm) target = ForwardBend(15f);
+            else target = twinHip != null && gait.Active ? gait.Knee : 0f; // knee steps with the gait, else straight
             midServo.Drive(midJoint, target, midTorque);
         }
 
@@ -1143,6 +1240,87 @@ namespace BionicProsthetics
         {
             if (segment != null) Destroy(segment);
             RestoreIgnoredCollisions();
+        }
+    }
+
+    /// <summary>
+    /// Lets a prosthetic leg walk with the healthy one. It records the healthy hip and knee, measures the stride
+    /// from how often the hip swings past its average, and plays the motion back half a stride later - the
+    /// other leg's half of the step. When the healthy leg stops stepping (standing, sitting, crouching) the
+    /// delay drops to zero, so the prosthetic simply matches its pose.
+    /// </summary>
+    class GaitMirror
+    {
+        const int Size = 300;
+        readonly float[] times = new float[Size];
+        readonly float[] hips = new float[Size];
+        readonly float[] knees = new float[Size];
+        int head = -1;
+        int count;
+        float mean;
+        bool hasMean;
+        float lastSwing = -10f;
+        float swingSide;
+        float halfStride;
+
+        public float Hip;
+        public float Knee;
+        public bool Active { get { return count > 0; } }
+
+        public void Reset()
+        {
+            head = -1;
+            count = 0;
+            hasMean = false;
+            lastSwing = -10f;
+            swingSide = 0f;
+            halfStride = 0f;
+            Hip = 0f;
+            Knee = 0f;
+        }
+
+        public void Record(float now, float hip, float knee, float dt)
+        {
+            head = (head + 1) % Size;
+            times[head] = now;
+            hips[head] = hip;
+            knees[head] = knee;
+            if (count < Size) count++;
+
+            if (!hasMean)
+            {
+                mean = hip;
+                hasMean = true;
+            }
+            mean = Mathf.Lerp(mean, hip, Mathf.Clamp01(dt * 0.7f));
+            float offset = hip - mean;
+            if (Mathf.Abs(offset) > 4f) // a band, so jitter around the average doesn't count as a step
+            {
+                float side = Mathf.Sign(offset);
+                if (swingSide != 0f && side != swingSide)
+                {
+                    float gap = now - lastSwing;
+                    if (gap > 0.12f && gap < 2f) halfStride = halfStride <= 0f ? gap : Mathf.Lerp(halfStride, gap, 0.4f);
+                    lastSwing = now;
+                }
+                else if (swingSide == 0f)
+                {
+                    lastSwing = now;
+                }
+                swingSide = side;
+            }
+
+            float delay = now - lastSwing < 2f ? halfStride : 0f;
+            float at = now - delay;
+            int best = head;
+            for (int i = 0; i < count; i++)
+            {
+                int index = (head - i + Size) % Size;
+                best = index;
+                if (times[index] <= at) break;
+            }
+            Hip = hips[best];
+            Knee = knees[best];
         }
     }
 
