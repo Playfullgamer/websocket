@@ -1,0 +1,20 @@
+{
+  "Name": "Bionic Prosthetics",
+  "Author": "playfullgamer",
+  "Description": "Lost a limb? Not a problem. 14 hand-crafted prosthetics that snap onto stumps, size themselves to the wearer and mirror their healthy limbs - from pirate peg legs and hooks to plasma arm cannons, drill arms, rocket legs and chrome cyber limbs. Most have a special ability on activate.",
+  "ModVersion": "1.0",
+  "GameVersion": "1.27.5",
+  "ThumbnailPath": "thumb.png",
+  "EntryPoint": "Mod.Mod",
+  "Scripts": [
+    "Main.cs",
+    "ProstheticBehaviour.cs",
+    "Abilities.cs",
+    "FX.cs",
+    "SpriteData.cs"
+  ],
+  "Tags": [
+    "Fun",
+    "Machinery"
+  ]
+}
