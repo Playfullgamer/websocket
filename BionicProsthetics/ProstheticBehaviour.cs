@@ -290,11 +290,18 @@ namespace BionicProsthetics
 
         static Dictionary<string, LimbBehaviour> LimbMap(PersonBehaviour person)
         {
+            return LimbMap(person, false);
+        }
+
+        /// <summary>Limbs by name. asset = reading the game's prefab, which isn't in the scene (so nothing is "active").</summary>
+        static Dictionary<string, LimbBehaviour> LimbMap(PersonBehaviour person, bool asset)
+        {
             Dictionary<string, LimbBehaviour> map = new Dictionary<string, LimbBehaviour>();
             if (person == null) return map;
-            foreach (LimbBehaviour l in person.GetComponentsInChildren<LimbBehaviour>())
+            foreach (LimbBehaviour l in person.GetComponentsInChildren<LimbBehaviour>(asset))
             {
-                if (l != null && l.gameObject.activeInHierarchy && !map.ContainsKey(l.name)) map[l.name] = l;
+                if (l == null || map.ContainsKey(l.name)) continue;
+                if (asset ? l.gameObject.activeSelf : l.gameObject.activeInHierarchy) map[l.name] = l;
             }
             return map;
         }
@@ -492,20 +499,60 @@ namespace BionicProsthetics
             return true;
         }
 
-        /// <summary>How far a body's collision shape reaches past a point along a direction (e.g. from the knee down to the sole).</summary>
+        /// <summary>
+        /// How far a body's collision shape reaches past a point along a direction (e.g. from the knee down to
+        /// the sole). Read straight from the collider shapes, so it also works on the game's Human prefab.
+        /// </summary>
         static float Reach(Rigidbody2D body, Vector2 from, Vector2 dir)
         {
             if (body == null) return 0f;
-            List<Collider2D> colliders = new List<Collider2D>();
-            body.GetAttachedColliders(colliders);
             float best = 0f;
-            foreach (Collider2D c in colliders)
+            foreach (Collider2D c in body.GetComponents<Collider2D>())
             {
                 if (c == null || c.isTrigger || !c.enabled) continue;
-                Vector2 extreme = c.ClosestPoint(from + dir * 100f);
-                best = Mathf.Max(best, Vector2.Dot(extreme - from, dir));
+                foreach (Vector2 local in ShapePoints(c))
+                {
+                    Vector2 world = c.transform.TransformPoint(local);
+                    best = Mathf.Max(best, Vector2.Dot(world - from, dir));
+                }
             }
             return best;
+        }
+
+        /// <summary>Outline points of a collider in its own local space.</summary>
+        static IEnumerable<Vector2> ShapePoints(Collider2D c)
+        {
+            Vector2 o = c.offset;
+            BoxCollider2D box = c as BoxCollider2D;
+            CapsuleCollider2D capsule = c as CapsuleCollider2D;
+            CircleCollider2D circle = c as CircleCollider2D;
+            PolygonCollider2D polygon = c as PolygonCollider2D;
+            EdgeCollider2D edge = c as EdgeCollider2D;
+            if (box != null || capsule != null)
+            {
+                Vector2 h = (box != null ? box.size : capsule.size) * 0.5f;
+                yield return o + new Vector2(-h.x, -h.y);
+                yield return o + new Vector2(h.x, -h.y);
+                yield return o + new Vector2(-h.x, h.y);
+                yield return o + new Vector2(h.x, h.y);
+            }
+            else if (circle != null)
+            {
+                for (int i = 0; i < 8; i++)
+                {
+                    float a = i * Mathf.PI / 4f;
+                    yield return o + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * circle.radius;
+                }
+            }
+            else if (polygon != null)
+            {
+                for (int p = 0; p < polygon.pathCount; p++)
+                    foreach (Vector2 v in polygon.GetPath(p)) yield return o + v;
+            }
+            else if (edge != null)
+            {
+                foreach (Vector2 v in edge.points) yield return o + v;
+            }
         }
 
         static Rigidbody2D BodyOf(LimbBehaviour limb)
@@ -555,6 +602,48 @@ namespace BionicProsthetics
             if (!hasHip) return 0f;
             float thighLength = Vector2.Distance(hip, knee);
             return Slot == ProstheticSlot.UpperLeg ? thighLength : thighLength + belowKnee;
+        }
+
+        /// <summary>The game's Human prefab: the reference body for limb proportions.</summary>
+        public static GameObject HumanPrefab;
+        static readonly Dictionary<ProstheticSlot, float> proportionCache = new Dictionary<ProstheticSlot, float>();
+
+        /// <summary>
+        /// No healthy twin to copy (e.g. both legs gone): size from this person's own body instead. The limb's
+        /// length relative to the torso is measured once on the game's Human, then scaled to this person's torso,
+        /// so bigger and smaller people get proportionally bigger and smaller prosthetics.
+        /// </summary>
+        float MeasureFromBody(Dictionary<string, LimbBehaviour> limbs)
+        {
+            float torso = TorsoLength(limbs);
+            if (torso <= 0.01f) return 0f;
+            float proportion;
+            if (!proportionCache.TryGetValue(Slot, out proportion))
+            {
+                proportion = ProportionOf(HumanPrefab != null ? HumanPrefab.GetComponentInChildren<PersonBehaviour>(true) : null, true);
+                if (proportion > 0f) proportionCache[Slot] = proportion;
+            }
+            if (proportion <= 0f)
+            {
+                // No prefab to read: learn it from anyone in the scene who still has the limb.
+                foreach (PersonBehaviour other in FindObjectsOfType<PersonBehaviour>())
+                {
+                    proportion = ProportionOf(other, false);
+                    if (proportion > 0f) break;
+                }
+            }
+            return proportion > 0f ? proportion * torso : 0f;
+        }
+
+        /// <summary>Limb length divided by torso length on a complete body (back side), or 0.</summary>
+        float ProportionOf(PersonBehaviour model, bool asset)
+        {
+            if (model == null) return 0f;
+            Dictionary<string, LimbBehaviour> map = LimbMap(model, asset);
+            float torso = TorsoLength(map);
+            float limb = MeasureTwin(map, "");
+            if (torso <= 0.01f || limb <= 0.01f) limb = MeasureTwin(map, "Front");
+            return torso > 0.01f && limb > 0.01f ? limb / torso : 0f;
         }
 
         /// <summary>This prosthetic measured the same way as MeasureTwin, at its current scale.</summary>
@@ -620,9 +709,11 @@ namespace BionicProsthetics
             }
             ownLength = Mathf.Max(0.01f, ownLength);
             // Best: measure the healthy limb joint-to-tip and ourselves the same way, so the sole lands exactly
-            // where the healthy foot does. Otherwise fall back to estimating from sprite sizes.
+            // where the healthy foot does. No healthy limb: scale a normal human's proportions to this person's
+            // torso. Last resort: estimate from sprite sizes.
             float scale;
             float expected = MeasureTwin(limbs, twinSide);
+            if (expected <= 0.01f) expected = MeasureFromBody(limbs);
             float measured = expected > 0.01f ? MeasureSelf(attachLocal) : 0f;
             if (measured > 0.001f)
             {

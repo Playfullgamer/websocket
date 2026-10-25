@@ -988,7 +988,7 @@ def bent_preview(upper, lower, top, pivot, angle):
     return img.crop(img.getbbox())
 
 
-def category_icon(img, size=64):
+def category_icon(img, size=128):
     """White silhouette icon for the spawn-menu category, matching the game's monochrome icons."""
     icon = thumbnail(img, size)
     px = icon.load()
@@ -1052,14 +1052,18 @@ def fx_textures(out):
 
 # ---------------------------------------------------------------- previews
 
-def thumbnail(img, size=64):
-    """Menu icon: prosthetic tilted 35 degrees, crisp nearest-neighbour upscale."""
-    big = img.resize((img.width * 4, img.height * 4), Image.NEAREST)
-    rot = big.rotate(-35, resample=Image.NEAREST, expand=True)
-    bbox = rot.getbbox()
-    rot = rot.crop(bbox)
-    s = (size - 4) / max(rot.width, rot.height)
-    rot = rot.resize((max(1, int(rot.width * s)), max(1, int(rot.height * s))), Image.LANCZOS)
+def thumbnail(img, size=128):
+    """Menu icon: the prosthetic tilted 35 degrees, rendered smooth at 128px.
+
+    The art is first blown up 8x with hard pixel edges, then rotated with smooth filtering and shrunk,
+    so the pixel look survives without the jagged stair-steps and grain a small nearest-neighbour
+    rotation gives (the game rescales the icon again in its menu).
+    """
+    big = img.resize((img.width * 8, img.height * 8), Image.NEAREST)
+    rot = big.rotate(-35, resample=Image.BICUBIC, expand=True)
+    rot = rot.crop(rot.getbbox())
+    s = (size - 8) / max(rot.width, rot.height)
+    rot = rot.resize((max(1, round(rot.width * s)), max(1, round(rot.height * s))), Image.LANCZOS)
     out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     out.paste(rot, ((size - rot.width) // 2, (size - rot.height) // 2), rot)
     return out

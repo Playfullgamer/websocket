@@ -27,7 +27,9 @@ The prosthetics get their own **Prosthetics** tab in the spawn menu (if the game
 | Modular thigh | the upper leg | the **hips**, then plug any lower leg into its knee |
 
 It clicks into place with a servo sound. It is sized by measuring the wearer's healthy limb joint to joint
-(hip, knee, ankle down to the sole; shoulder, elbow, fingertips), so feet reach the floor exactly like the real foot. It is
+(hip, knee, ankle down to the sole; shoulder, elbow, fingertips), so feet reach the floor exactly like the real foot.
+If there is no healthy limb to copy (say both legs are gone), it uses the person's own body size instead: a normal
+human's limb-to-torso proportions, read from the game's Human, scaled to this person's torso. It is
 and drawn in the right layer: front arms over the body and legs, back arms behind everything. The wearer's own body won't
 collide with it. If you touch the wrong body part of someone it would fit, a hint tells you where it goes.
 

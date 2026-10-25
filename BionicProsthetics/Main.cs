@@ -44,6 +44,8 @@ namespace Mod
             Res.Load();
             try { ProstheticBehaviour.SegmentPrefab = ModAPI.FindSpawnable("Brick").Prefab; }
             catch { ProstheticBehaviour.SegmentPrefab = null; }
+            try { ProstheticBehaviour.HumanPrefab = ModAPI.FindSpawnable("Human").Prefab; }
+            catch { ProstheticBehaviour.HumanPrefab = null; }
             category = CreateCategory("Prosthetics", "Replacement limbs for anyone who's lost one - from peg legs to plasma cannons.",
                 ModAPI.LoadSprite("category.png"));
             if (category == null) category = FindCategory("Misc.") ?? FindCategory("Entities");
