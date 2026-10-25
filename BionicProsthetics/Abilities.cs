@@ -398,8 +398,8 @@ namespace BionicProsthetics
             loop.spatialBlend = 0f;
             loop.volume = 0.8f;
             loop.outputAudioMixerGroup = P.AudioTemplate.outputAudioMixerGroup;
-            flameLight = ModAPI.CreateLight(transform, new Color(1f, 0.6f, 0.2f), 4f, 1.6f).gameObject;
-            flameLight.transform.localPosition = P.PixelToLocal(P.TipPixel);
+            flameLight = ModAPI.CreateLight(P.TipTransform, new Color(1f, 0.6f, 0.2f), 4f, 1.6f).gameObject;
+            flameLight.transform.localPosition = P.TipLocal;
             flameLight.SetActive(false);
         }
 
@@ -430,7 +430,7 @@ namespace BionicProsthetics
             // Part of the thrust goes through the leg itself (so it steers and tumbles), the rest is
             // shared across the wearer so the hip joint isn't torn apart by a light leg hauling a heavy body.
             Vector2 thrust = -P.AxisDown * liftMass * Physics2D.gravity.magnitude * 1.5f;
-            P.Body.AddForce(thrust * 0.35f);
+            P.TipBody.AddForce(thrust * 0.35f);
             if (liftMass <= 0f) return;
             foreach (Rigidbody2D rb in bodies) if (rb != null) rb.AddForce(thrust * 0.65f * rb.mass / liftMass);
         }
@@ -445,7 +445,7 @@ namespace BionicProsthetics
             float L = P.WorldLength;
             Vector2 nozzle = P.TipWorld;
             Vector2 dir = P.AxisDown;
-            Vector2 baseVel = P.Body.velocity;
+            Vector2 baseVel = P.TipBody.velocity;
             FX.Particle(Res.Glow, nozzle, baseVel + dir * L * 6f, new Color(1f, 0.95f, 0.6f, 1f), L * 0.22f, L * 0.05f, 0.12f, 0f, 0f, P.Renderer);
             FX.Particle(Res.Glow, nozzle, baseVel + (Vector2)(Quaternion.Euler(0, 0, UnityEngine.Random.Range(-12f, 12f)) * dir) * L * 5f,
                 new Color(1f, 0.5f, 0.1f, 0.9f), L * 0.28f, L * 0.1f, 0.22f, 0f, 0f, P.Renderer);

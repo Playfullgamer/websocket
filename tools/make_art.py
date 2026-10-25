@@ -325,7 +325,7 @@ def pogo_leg(compressed=False):
     return c, (8, 6), (8, min(tip_y, 46))
 
 
-def medical_leg():
+def medical_leg(outline=True):
     c = Canvas(26, 82)
     cx = 8.5
     # laminated thigh socket, tapering
@@ -364,11 +364,12 @@ def medical_leg():
         c.put(x + 1, 69 + i, RUBBER[3])
     c.line(6, 72, 18, 74, RED[3])  # side swoosh
     c.line(6, 73, 18, 75, RED[1])
-    c.outline()
+    if outline:
+        c.outline()
     return c, (8, 6), (14, 79)
 
 
-def cyber_leg():
+def cyber_leg(outline=True):
     c = Canvas(28, 82)
     cx = 9.5
     # thigh armour
@@ -413,11 +414,12 @@ def cyber_leg():
     for x in range(4, 25):  # glowing sole
         c.put(x, 79, CYAN[2] if x % 4 else CYAN[4])
     c.glow([CYAN[2], CYAN[4], CYAN[3]], radius=1, alpha=80)
-    c.outline()
+    if outline:
+        c.outline()
     return c, (9, 6), (15, 79)
 
 
-def rocket_leg():
+def rocket_leg(outline=True):
     c = Canvas(26, 84)
     cx = 10.5
     socket(c, 1, 13, cx, 15, GUNMETAL, strap=RUBBER, buckle=STEEL, strap_row=9)
@@ -449,7 +451,8 @@ def rocket_leg():
     for x in range(int(cx - 6), int(cx + 6)):  # dark throat & hot rim
         c.put(x, 81, RUBBER[1])
         c.put(x, 80, ORANGE[3] if abs(x - cx) < 4 else STEEL[0])
-    c.outline()
+    if outline:
+        c.outline()
     return c, (10, 7), (10, 82)
 
 
@@ -689,7 +692,7 @@ def golden_hand():
     return c, (8, 6), (8, 42)
 
 
-# ---------------------------------------------------------------- two-piece arms
+# ---------------------------------------------------------------- two-piece limbs
 
 ELBOW_RADIUS = 5.6
 
@@ -709,11 +712,20 @@ def hinge_cyber(c, cx, cy):
     c.put(cx - 1, cy - 1, CYAN[4])
 
 
-def split_arm(builder, pivot, hinge):
-    """Cuts a full arm at the elbow into an upper arm and a forearm that meet in a round hinge.
+def hinge_rocket(c, cx, cy):
+    c.disk(cx, cy, ELBOW_RADIUS, STEEL[0])
+    c.disk(cx - 0.4, cy - 0.4, ELBOW_RADIUS - 1, STEEL[2])
+    c.disk(cx, cy, 2.6, ORANGE[1])
+    c.disk(cx - 0.4, cy - 0.4, 1.6, ORANGE[3])
+    for a in range(0, 360, 90):
+        c.put(cx + 3.6 * math.cos(math.radians(a + 45)), cy + 3.6 * math.sin(math.radians(a + 45)), STEEL[4])
 
-    Both pieces are rounded around the pivot so the forearm can swing without a gap, and the
-    forearm carries the hinge cap (it is drawn on top of the upper arm in game).
+
+def split_limb(builder, pivot, hinge):
+    """Cuts a full arm/leg at the elbow/knee into an upper and a lower piece that meet in a round hinge.
+
+    Both pieces are rounded around the pivot so the lower piece can swing without a gap, and it
+    carries the hinge cap (it is drawn on top of the upper piece in game).
     """
     c, attach, tip = builder(outline=False)
     px, py = pivot
@@ -737,8 +749,8 @@ def split_arm(builder, pivot, hinge):
     return upper, lower, top, attach, (tip[0], tip[1] - top)
 
 
-def bent_preview(upper, lower, top, pivot, angle=32):
-    """Upper arm + forearm bent forward at the elbow, for thumbnails and the banner."""
+def bent_preview(upper, lower, top, pivot, angle):
+    """Upper + lower piece bent at the joint (positive = counter-clockwise), for thumbnails and the banner."""
     pad = 24
     img = Image.new("RGBA", (upper.w + pad * 2, lower.h + top + pad * 2), (0, 0, 0, 0))
     fore = Image.new("RGBA", img.size, (0, 0, 0, 0))
@@ -885,8 +897,8 @@ def banner(sprites, out):
     bigs = []
     for name in order:
         s = sprites[name]
-        sc = 3 if s.height <= 50 else 2
-        bigs.append(s.resize((s.width * sc, s.height * sc), Image.NEAREST))
+        sc = min(3 if s.height <= 50 else 2, 138 / s.height)  # keep clear of the subtitle
+        bigs.append(s.resize((int(s.width * sc), int(s.height * sc)), Image.NEAREST))
     gap = (W - 16 - sum(b.width for b in bigs)) / (len(bigs) - 1)
     x = 8.0
     for big in bigs:
@@ -911,9 +923,6 @@ def main():
         "running_blade": running_blade,
         "pogo_leg": lambda: pogo_leg(False),
         "pogo_leg_squash": lambda: pogo_leg(True),
-        "medical_leg": medical_leg,
-        "cyber_leg": cyber_leg,
-        "rocket_leg": rocket_leg,
         "hook": hook,
         "claw_open": lambda: claw(False),
         "claw_closed": lambda: claw(True),
@@ -932,21 +941,24 @@ def main():
         meta[name] = (c.w, c.h, attach, tip)
         if not any(name.endswith(s) for s in ("_squash", "_closed", "_1", "_2")):
             thumbnail(c.img).save(os.path.join(th, name.replace("_0", "").replace("_open", "") + ".png"))
-    # Full arms come in two pieces joined at the elbow.
+    # Full arms and legs come in two pieces joined at the elbow / knee.
     arm_lines = []
-    for name, fn, pivot, hinge in (("medical_arm", medical_arm, (8.5, 34.0), hinge_medical),
-                                   ("cyber_arm", cyber_arm, (9.5, 34.5), hinge_cyber)):
-        upper, lower, top, attach, tip = split_arm(fn, pivot, hinge)
+    for name, fn, pivot, hinge, bend in (("medical_arm", medical_arm, (8.5, 34.0), hinge_medical, 32),
+                                         ("cyber_arm", cyber_arm, (9.5, 34.5), hinge_cyber, 32),
+                                         ("medical_leg", medical_leg, (8.5, 31.0), hinge_medical, -28),
+                                         ("cyber_leg", cyber_leg, (9.5, 34.5), hinge_cyber, -28),
+                                         ("rocket_leg", rocket_leg, (10.5, 37.0), hinge_rocket, -28)):
+        upper, lower, top, attach, tip = split_limb(fn, pivot, hinge)
         upper.save(os.path.join(sp, name + "_upper.png"))
         lower.save(os.path.join(sp, name + "_lower.png"))
-        preview = bent_preview(upper, lower, top, pivot)
+        preview = bent_preview(upper, lower, top, pivot, bend)
         sprites[name] = preview
         thumbnail(preview).save(os.path.join(th, name + ".png"))
         ident = "".join(p.capitalize() for p in name.split("_"))
         arm_lines += [
             f"        public static readonly Vector2 {ident}Attach = new Vector2({attach[0]}f, {attach[1]}f);",
-            f"        public static readonly Vector2 {ident}Elbow = new Vector2({pivot[0]}f, {pivot[1]}f);",
-            f"        public static readonly Vector2 {ident}LowerElbow = new Vector2({pivot[0]}f, {pivot[1] - top}f);",
+            f"        public static readonly Vector2 {ident}Joint = new Vector2({pivot[0]}f, {pivot[1]}f);",
+            f"        public static readonly Vector2 {ident}LowerJoint = new Vector2({pivot[0]}f, {pivot[1] - top}f);",
             f"        public static readonly Vector2 {ident}Tip = new Vector2({tip[0]}f, {tip[1]}f);",
         ]
         meta[name + "_upper"] = (upper.w, upper.h, attach, pivot)

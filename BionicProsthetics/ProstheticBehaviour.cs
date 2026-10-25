@@ -33,27 +33,27 @@ namespace BionicProsthetics
         public string ReplacedLimb { get; private set; }
         public Rigidbody2D Body { get; private set; }
         public SpriteRenderer Renderer { get; private set; }
-        /// <summary>Two-piece arms only: the separate forearm hinged at the elbow.</summary>
-        public Rigidbody2D ForearmBody { get; private set; }
-        public SpriteRenderer ForearmRenderer { get; private set; }
-        /// <summary>The body that carries the tip: the forearm on two-piece arms, otherwise this one.</summary>
-        public Rigidbody2D TipBody { get { return ForearmBody != null ? ForearmBody : Body; } }
+        /// <summary>Two-piece limbs only: the separate lower segment (forearm or shin) hinged at the elbow/knee.</summary>
+        public Rigidbody2D SegmentBody { get; private set; }
+        public SpriteRenderer SegmentRenderer { get; private set; }
+        /// <summary>The body that carries the tip: the lower segment on two-piece limbs, otherwise this one.</summary>
+        public Rigidbody2D TipBody { get { return SegmentBody != null ? SegmentBody : Body; } }
 
         HingeJoint2D joint;
         HingeJoint2D mimicJoint;
         bool mimicInverted;
         float motorTorque;
-        readonly Servo shoulderServo = new Servo();
+        readonly Servo socketServo = new Servo();
 
-        GameObject forearm;
-        HingeJoint2D elbow;
-        Vector2 elbowPixel;
-        Vector2 forearmElbowPixel;
-        HingeJoint2D elbowMimic;
-        bool elbowMimicInverted;
-        float elbowTorque;
-        float elbowConventionVotes;
-        readonly Servo elbowServo = new Servo();
+        GameObject segment;
+        HingeJoint2D midJoint;
+        Vector2 jointPixel;
+        Vector2 segmentJointPixel;
+        HingeJoint2D midMimic;
+        bool midMimicInverted;
+        float midTorque;
+        float midConventionVotes;
+        readonly Servo midServo = new Servo();
         float nextAttachTime;
         float nextProbeTime;
         float lastContactTime = -10f;
@@ -107,12 +107,12 @@ namespace BionicProsthetics
         {
             get
             {
-                if (forearm != null) return forearm.transform.TransformPoint(PixelToLocal(ForearmRenderer.sprite, TipPixel));
+                if (segment != null) return segment.transform.TransformPoint(PixelToLocal(SegmentRenderer.sprite, TipPixel));
                 return transform.TransformPoint(PixelToLocal(TipPixel));
             }
         }
-        /// <summary>World direction pointing from the socket (or elbow) towards the extremity.</summary>
-        public Vector2 AxisDown { get { return -(Vector2)(forearm != null ? forearm.transform.up : transform.up); } }
+        /// <summary>World direction pointing from the socket (or midJoint) towards the extremity.</summary>
+        public Vector2 AxisDown { get { return -(Vector2)(segment != null ? segment.transform.up : transform.up); } }
         /// <summary>World length from socket to tip; a handy size reference for effects.</summary>
         public float WorldLength { get { return Mathf.Max(0.05f, Vector2.Distance(AttachWorld, TipWorld)); } }
         public int CollisionMask { get { return Physics2D.GetLayerCollisionMask(gameObject.layer); } }
@@ -124,13 +124,13 @@ namespace BionicProsthetics
         {
             if (col == null) return false;
             if (col.attachedRigidbody == Body || col.transform.IsChildOf(transform)) return true;
-            if (ForearmBody != null && col.attachedRigidbody == ForearmBody) return true;
+            if (SegmentBody != null && col.attachedRigidbody == SegmentBody) return true;
             if (Wearer == null) return false;
             if (col.transform.IsChildOf(Wearer.transform)) return true;
             ProstheticBehaviour other = col.GetComponentInParent<ProstheticBehaviour>();
             if (other == null && col.attachedRigidbody != null)
             {
-                ForearmLink link = col.attachedRigidbody.GetComponent<ForearmLink>();
+                SegmentLink link = col.attachedRigidbody.GetComponent<SegmentLink>();
                 if (link != null) other = link.Owner;
             }
             return other != null && other.Wearer == Wearer;
@@ -141,14 +141,14 @@ namespace BionicProsthetics
         {
             List<Rigidbody2D> list = new List<Rigidbody2D>();
             list.Add(Body);
-            if (ForearmBody != null) list.Add(ForearmBody);
+            if (SegmentBody != null) list.Add(SegmentBody);
             if (Wearer == null) return list;
             list.AddRange(Wearer.GetComponentsInChildren<Rigidbody2D>());
             foreach (ProstheticBehaviour p in FindObjectsOfType<ProstheticBehaviour>())
             {
                 if (p == this || p.Wearer != Wearer) continue;
                 if (p.Body != null) list.Add(p.Body);
-                if (p.ForearmBody != null) list.Add(p.ForearmBody);
+                if (p.SegmentBody != null) list.Add(p.SegmentBody);
             }
             return list;
         }
@@ -207,7 +207,7 @@ namespace BionicProsthetics
             OnPartContact(collision.collider);
         }
 
-        /// <summary>Contact on any part of the prosthetic (the forearm reports through here too).</summary>
+        /// <summary>Contact on any part of the prosthetic (the segment reports through here too).</summary>
         public void OnPartContact(Collider2D other)
         {
             lastContactTime = Time.time;
@@ -424,10 +424,10 @@ namespace BionicProsthetics
             // Resize uniformly so the prosthetic is as long as the limb it replaces.
             Vector2 attachLocal = PixelToLocal(AttachPixel);
             float ownLength = attachLocal.y - Renderer.sprite.bounds.min.y;
-            if (forearm != null)
+            if (segment != null)
             {
-                ownLength = attachLocal.y - PixelToLocal(elbowPixel).y
-                    + PixelToLocal(ForearmRenderer.sprite, forearmElbowPixel).y - ForearmRenderer.sprite.bounds.min.y;
+                ownLength = attachLocal.y - PixelToLocal(jointPixel).y
+                    + PixelToLocal(SegmentRenderer.sprite, segmentJointPixel).y - SegmentRenderer.sprite.bounds.min.y;
             }
             ownLength = Mathf.Max(0.01f, ownLength);
             float expected = ExpectedLength(limbs, anchor, twin, twinSide);
@@ -445,15 +445,17 @@ namespace BionicProsthetics
             Body.angularVelocity = anchorRb.angularVelocity;
 
             Rigidbody2D twinRb = twin != null ? twin.GetComponent<Rigidbody2D>() : null;
-            LimbBehaviour twinLower = forearm != null && twin != null ? Get(limbs, "LowerArm" + twinSide) : null;
+            LimbBehaviour twinLower = segment != null && twin != null ? Get(limbs, (IsArm ? "LowerArm" : "LowerLeg") + twinSide) : null;
             Rigidbody2D twinLowerRb = twinLower != null ? twinLower.GetComponent<Rigidbody2D>() : null;
-            if (forearm != null)
+            if (segment != null)
             {
-                // Two-piece arm: each half weighs what the real half would.
+                // Two-piece limb: each half weighs what the real half would (a shin includes the foot).
                 Body.mass = twinRb != null ? twinRb.mass : Mathf.Max(0.3f, anchorRb.mass * 0.6f);
-                ForearmBody.mass = twinLowerRb != null ? twinLowerRb.mass : Body.mass * 0.8f;
-                PlaceForearm();
-                elbowMimic = twinLowerRb != null ? FindHinge(twinLowerRb, twinRb, out elbowMimicInverted) : null;
+                SegmentBody.mass = twinLowerRb != null ? twinLowerRb.mass : Body.mass * 0.8f;
+                LimbBehaviour twinFoot = IsArm ? null : Get(limbs, "Foot" + twinSide);
+                if (twinFoot != null && twinFoot.GetComponent<Rigidbody2D>() != null) SegmentBody.mass += twinFoot.GetComponent<Rigidbody2D>().mass;
+                PlaceSegment();
+                midMimic = twinLowerRb != null ? FindHinge(twinLowerRb, twinRb, out midMimicInverted) : null;
             }
             else
             {
@@ -506,11 +508,13 @@ namespace BionicProsthetics
             float wearerMass = 0f;
             foreach (Rigidbody2D rb in person.GetComponentsInChildren<Rigidbody2D>()) wearerMass += rb.mass;
             float gravity = Mathf.Max(1f, Physics2D.gravity.magnitude);
-            float armMass = Body.mass + (ForearmBody != null ? ForearmBody.mass : 0f);
+            float armMass = Body.mass + (SegmentBody != null ? SegmentBody.mass : 0f);
             motorTorque = IsArm ? armMass * gravity * expected * 6f : wearerMass * gravity * expected * 1.2f;
             joint.useMotor = !LockJoint;
-            shoulderServo.ResetSample();
-            if (ForearmBody != null) elbowTorque = ForearmBody.mass * gravity * expected * 0.5f * 6f;
+            socketServo.ResetSample();
+            // An elbow only carries the forearm; a knee has to carry the whole wearer.
+            if (SegmentBody != null)
+                midTorque = IsArm ? SegmentBody.mass * gravity * expected * 0.5f * 6f : wearerMass * gravity * expected * 0.5f * 1.2f;
 
             Anchor = anchor;
             Wearer = person;
@@ -551,7 +555,7 @@ namespace BionicProsthetics
             Wearer = null;
             ReplacedLimb = null;
             mimicJoint = null;
-            elbowMimic = null;
+            midMimic = null;
             nextAttachTime = Time.time + 1.5f;
             if (announce) Play(Res.Detach);
             SendMessage("OnProstheticDetached", SendMessageOptions.DontRequireReceiver);
@@ -574,11 +578,11 @@ namespace BionicProsthetics
 
         void FixedUpdate()
         {
-            // Arm flipped, resized or teleported by the game: re-hang the forearm to match.
-            if (forearm != null && (Mathf.Sign(forearm.transform.localScale.x) != Mathf.Sign(transform.localScale.x)
-                || !Mathf.Approximately(forearm.transform.localScale.y, transform.localScale.y) || ElbowPulledApart()))
-                PlaceForearm();
-            UpdateElbow();
+            // Limb flipped, resized or teleported by the game: re-hang the lower segment to match.
+            if (segment != null && (Mathf.Sign(segment.transform.localScale.x) != Mathf.Sign(transform.localScale.x)
+                || !Mathf.Approximately(segment.transform.localScale.y, transform.localScale.y) || MidJointPulledApart()))
+                PlaceSegment();
+            UpdateMidJoint();
 
             if (joint == null) return;
             // The stump itself was destroyed or the joint lost its body: fall off instead of pinning to the world.
@@ -592,151 +596,161 @@ namespace BionicProsthetics
                 Reseat();
                 return;
             }
-            shoulderServo.Sample(joint);
+            socketServo.Sample(joint);
             if (!joint.useMotor) return;
 
             float target = 0f;
             if (mimicJoint != null && mimicJoint.enabled && mimicJoint.connectedBody != null)
                 target = mimicInverted ? -mimicJoint.jointAngle : mimicJoint.jointAngle;
-            shoulderServo.Drive(joint, target, motorTorque);
+            socketServo.Drive(joint, target, motorTorque);
         }
 
-        // ------------------------------------------------------------ two-piece arms
+        // ------------------------------------------------------------ two-piece limbs
 
         /// <summary>
-        /// Splits this prosthetic into an upper arm (this object) and a forearm hinged at the elbow.
-        /// Pixel coordinates: elbow on this sprite, elbow and tip on the forearm sprite.
+        /// Splits this prosthetic into an upper piece (this object) and a lower segment hinged at the
+        /// elbow/knee. Pixel coordinates: joint on this sprite, joint and tip on the segment sprite.
         /// </summary>
-        public void BuildForearm(Sprite sprite, Vector2 elbowOnUpper, Vector2 elbowOnForearm, Vector2 tipOnForearm)
+        public void BuildSegment(Sprite sprite, Vector2 jointOnUpper, Vector2 jointOnSegment, Vector2 tipOnSegment)
         {
-            if (forearm != null) Destroy(forearm);
-            elbowPixel = elbowOnUpper;
-            forearmElbowPixel = elbowOnForearm;
-            TipPixel = tipOnForearm;
+            if (segment != null) Destroy(segment);
+            jointPixel = jointOnUpper;
+            segmentJointPixel = jointOnSegment;
+            TipPixel = tipOnSegment;
 
-            forearm = new GameObject(DisplayName + " Forearm");
-            forearm.layer = gameObject.layer;
-            ForearmRenderer = forearm.AddComponent<SpriteRenderer>();
-            ForearmRenderer.sprite = sprite;
-            ForearmRenderer.sharedMaterial = Renderer.sharedMaterial;
-            RegisterOverlay(ForearmRenderer, 1); // drawn over the upper arm so the hinge cap covers the seam
+            segment = new GameObject(DisplayName + (IsArm ? " Forearm" : " Shin"));
+            segment.layer = gameObject.layer;
+            SegmentRenderer = segment.AddComponent<SpriteRenderer>();
+            SegmentRenderer.sprite = sprite;
+            SegmentRenderer.sharedMaterial = Renderer.sharedMaterial;
+            RegisterOverlay(SegmentRenderer, 1); // drawn over the upper piece so the hinge cap covers the seam
 
-            ForearmBody = forearm.AddComponent<Rigidbody2D>();
-            ForearmBody.mass = Body.mass * 0.6f;
-            ForearmBody.gravityScale = Body.gravityScale;
-            ForearmBody.drag = Body.drag;
-            ForearmBody.angularDrag = Body.angularDrag;
-            ForearmBody.interpolation = Body.interpolation;
-            ForearmBody.collisionDetectionMode = Body.collisionDetectionMode;
-            PolygonCollider2D shape = forearm.AddComponent<PolygonCollider2D>();
+            SegmentBody = segment.AddComponent<Rigidbody2D>();
+            SegmentBody.mass = Body.mass * 0.6f;
+            SegmentBody.gravityScale = Body.gravityScale;
+            SegmentBody.drag = Body.drag;
+            SegmentBody.angularDrag = Body.angularDrag;
+            SegmentBody.interpolation = Body.interpolation;
+            SegmentBody.collisionDetectionMode = Body.collisionDetectionMode;
+            PolygonCollider2D shape = segment.AddComponent<PolygonCollider2D>();
             Collider2D mainShape = GetComponent<Collider2D>();
             if (mainShape != null) shape.sharedMaterial = mainShape.sharedMaterial;
-            forearm.AddComponent<ForearmLink>().Owner = this;
-            PlaceForearm();
+            segment.AddComponent<SegmentLink>().Owner = this;
+            PlaceSegment();
         }
+
+        /// <summary>The lower segment's transform, or this one for single-piece prosthetics.</summary>
+        public Transform TipTransform { get { return segment != null ? segment.transform : transform; } }
+
+        /// <summary>The tip in TipTransform's local space.</summary>
+        public Vector2 TipLocal { get { return PixelToLocal(segment != null ? SegmentRenderer.sprite : Renderer.sprite, TipPixel); } }
 
         IEnumerable<Collider2D> OwnColliders()
         {
             foreach (Collider2D c in GetComponents<Collider2D>()) yield return c;
-            if (forearm != null)
-                foreach (Collider2D c in forearm.GetComponents<Collider2D>()) yield return c;
+            if (segment != null)
+                foreach (Collider2D c in segment.GetComponents<Collider2D>()) yield return c;
         }
 
-        /// <summary>Hangs the forearm straight down from the elbow and (re)creates the elbow hinge.</summary>
-        void PlaceForearm()
+        /// <summary>Hangs the lower segment straight down from the joint and (re)creates the hinge.</summary>
+        void PlaceSegment()
         {
-            if (forearm == null) return;
-            if (elbow != null)
+            if (segment == null) return;
+            if (midJoint != null)
             {
-                elbow.enabled = false;
-                Destroy(elbow);
+                midJoint.enabled = false;
+                Destroy(midJoint);
             }
-            Transform t = forearm.transform;
+            Transform t = segment.transform;
             t.localScale = transform.localScale;
             t.rotation = transform.rotation;
-            Vector2 elbowWorld = transform.TransformPoint(PixelToLocal(elbowPixel));
-            Vector2 forearmLocal = PixelToLocal(ForearmRenderer.sprite, forearmElbowPixel);
+            Vector2 jointWorld = transform.TransformPoint(PixelToLocal(jointPixel));
+            Vector2 segmentLocal = PixelToLocal(SegmentRenderer.sprite, segmentJointPixel);
             t.position = new Vector3(t.position.x, t.position.y, transform.position.z);
-            Vector2 offset = elbowWorld - (Vector2)t.TransformPoint(forearmLocal);
+            Vector2 offset = jointWorld - (Vector2)t.TransformPoint(segmentLocal);
             t.position += new Vector3(offset.x, offset.y, 0f);
             Physics2D.SyncTransforms();
-            ForearmBody.velocity = Body.GetPointVelocity(elbowWorld);
-            ForearmBody.angularVelocity = Body.angularVelocity;
+            SegmentBody.velocity = Body.GetPointVelocity(jointWorld);
+            SegmentBody.angularVelocity = Body.angularVelocity;
 
-            elbow = forearm.AddComponent<HingeJoint2D>();
-            elbow.autoConfigureConnectedAnchor = false;
-            elbow.enableCollision = false;
-            elbow.connectedBody = Body;
-            elbow.anchor = forearmLocal;
-            elbow.connectedAnchor = PixelToLocal(elbowPixel);
-            elbow.breakForce = Mathf.Infinity;
-            elbow.breakTorque = Mathf.Infinity;
-            elbow.useLimits = true;
+            midJoint = segment.AddComponent<HingeJoint2D>();
+            midJoint.autoConfigureConnectedAnchor = false;
+            midJoint.enableCollision = false;
+            midJoint.connectedBody = Body;
+            midJoint.anchor = segmentLocal;
+            midJoint.connectedAnchor = PixelToLocal(jointPixel);
+            midJoint.breakForce = Mathf.Infinity;
+            midJoint.breakTorque = Mathf.Infinity;
+            midJoint.useLimits = true;
             JointAngleLimits2D loose = new JointAngleLimits2D();
             loose.min = -100f;
             loose.max = 100f;
-            elbow.limits = loose;
-            elbowServo.ResetSample();
+            midJoint.limits = loose;
+            midServo.ResetSample();
         }
 
-        bool ElbowPulledApart()
+        bool MidJointPulledApart()
         {
-            Vector2 onUpper = transform.TransformPoint(PixelToLocal(elbowPixel));
-            Vector2 onForearm = forearm.transform.TransformPoint(PixelToLocal(ForearmRenderer.sprite, forearmElbowPixel));
+            Vector2 onUpper = transform.TransformPoint(PixelToLocal(jointPixel));
+            Vector2 onSegment = segment.transform.TransformPoint(PixelToLocal(SegmentRenderer.sprite, segmentJointPixel));
             float upperLength = Vector2.Distance(AttachWorld, onUpper);
-            return Vector2.Distance(onUpper, onForearm) > Mathf.Max(0.05f, upperLength * 0.5f);
+            return Vector2.Distance(onUpper, onSegment) > Mathf.Max(0.05f, upperLength * 0.5f);
         }
 
-        /// <summary>Joint-angle value that bends the forearm forward (towards the wearer's front) by some degrees.</summary>
+        /// <summary>Joint-angle value that swings the lower segment forward (towards the wearer's front) by some degrees.</summary>
         float ForwardBend(float degrees)
         {
             // Forward is counter-clockwise when facing right, clockwise when facing left; the learned
             // convention maps that rotation onto the hinge's own angle sign.
-            float convention = elbowConventionVotes >= 0f ? 1f : -1f;
+            float convention = midConventionVotes >= 0f ? 1f : -1f;
             return degrees * Mathf.Sign(transform.localScale.x) * convention;
         }
 
-        void UpdateElbow()
+        void UpdateMidJoint()
         {
-            if (elbow == null || ForearmBody == null) return;
-            elbowServo.Sample(elbow);
-            // Learn how the hinge's angle relates to the forearm actually turning counter-clockwise.
-            float relativeSpin = ForearmBody.angularVelocity - Body.angularVelocity;
-            if (Mathf.Abs(relativeSpin) > 20f && Mathf.Abs(elbowServo.Rate) > 10f)
-                elbowConventionVotes = Mathf.Clamp(elbowConventionVotes + Mathf.Sign(relativeSpin * elbowServo.Rate), -10f, 10f);
+            if (midJoint == null || SegmentBody == null) return;
+            midServo.Sample(midJoint);
+            // Learn how the hinge's angle relates to the segment actually turning counter-clockwise.
+            float relativeSpin = SegmentBody.angularVelocity - Body.angularVelocity;
+            if (Mathf.Abs(relativeSpin) > 20f && Mathf.Abs(midServo.Rate) > 10f)
+                midConventionVotes = Mathf.Clamp(midConventionVotes + Mathf.Sign(relativeSpin * midServo.Rate), -10f, 10f);
 
-            bool mimicking = Attached && elbowMimic != null && elbowMimic.enabled && elbowMimic.connectedBody != null;
-            // Elbows only bend one way: copy the healthy elbow's range, or bend forward once we know which way that is.
-            JointAngleLimits2D limits = elbow.limits;
-            if (mimicking && elbowMimic.useLimits)
+            bool twinValid = Attached && midMimic != null && midMimic.enabled && midMimic.connectedBody != null;
+            // Elbows bend forward, knees bend back: copy the healthy joint's range, or use the natural
+            // range once we know which way the hinge measures.
+            JointAngleLimits2D limits = midJoint.limits;
+            if (twinValid && midMimic.useLimits)
             {
-                limits.min = elbowMimicInverted ? -elbowMimic.limits.max : elbowMimic.limits.min;
-                limits.max = elbowMimicInverted ? -elbowMimic.limits.min : elbowMimic.limits.max;
+                limits.min = midMimicInverted ? -midMimic.limits.max : midMimic.limits.min;
+                limits.max = midMimicInverted ? -midMimic.limits.min : midMimic.limits.max;
             }
-            else if (Mathf.Abs(elbowConventionVotes) >= 3f)
+            else if (Mathf.Abs(midConventionVotes) >= 3f)
             {
-                float a = ForwardBend(-10f), b = ForwardBend(145f);
+                float a = IsArm ? ForwardBend(-10f) : ForwardBend(5f);
+                float b = IsArm ? ForwardBend(145f) : ForwardBend(-140f);
                 limits.min = Mathf.Min(a, b);
                 limits.max = Mathf.Max(a, b);
             }
-            if (!Mathf.Approximately(limits.min, elbow.limits.min) || !Mathf.Approximately(limits.max, elbow.limits.max))
-                elbow.limits = limits;
+            if (!Mathf.Approximately(limits.min, midJoint.limits.min) || !Mathf.Approximately(limits.max, midJoint.limits.max))
+                midJoint.limits = limits;
 
-            // Loose on the floor the forearm flops freely; worn, it follows the healthy elbow or rests slightly bent.
+            // Loose on the floor the segment flops freely. Worn, an elbow follows the healthy elbow (or rests
+            // slightly bent); a knee locks straight to stand on, but gives under hard impacts and springs back.
             if (!Attached)
             {
-                elbow.useMotor = false;
+                midJoint.useMotor = false;
                 return;
             }
-            float target = mimicking
-                ? (elbowMimicInverted ? -elbowMimic.jointAngle : elbowMimic.jointAngle)
-                : ForwardBend(15f);
-            elbowServo.Drive(elbow, target, elbowTorque);
+            float target;
+            if (!IsArm) target = 0f;
+            else if (twinValid) target = midMimicInverted ? -midMimic.jointAngle : midMimic.jointAngle;
+            else target = ForwardBend(15f);
+            midServo.Drive(midJoint, target, midTorque);
         }
 
         void OnDestroy()
         {
-            if (forearm != null) Destroy(forearm);
+            if (segment != null) Destroy(segment);
             foreach (KeyValuePair<Collider2D, Collider2D> pair in ignoredPairs)
             {
                 if (pair.Key != null && pair.Value != null) Physics2D.IgnoreCollision(pair.Key, pair.Value, false);
@@ -783,8 +797,8 @@ namespace BionicProsthetics
         }
     }
 
-    /// <summary>Lives on a two-piece arm's forearm: reports its contacts and dies with its upper arm.</summary>
-    public class ForearmLink : MonoBehaviour
+    /// <summary>Lives on a two-piece limb's lower segment: reports its contacts and dies with its upper piece.</summary>
+    public class SegmentLink : MonoBehaviour
     {
         public ProstheticBehaviour Owner;
 

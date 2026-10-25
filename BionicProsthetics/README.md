@@ -30,11 +30,12 @@ collide with it. If you touch the wrong body part of someone it would fit, a hin
 
 * **Activate** (F) to use its ability.
 * Right-click → **Detach prosthetic** to take it off.
-* Prosthetic arms copy whatever the healthy arm is doing. Prosthetic legs stay straight and
-  hold enough torque to bear the wearer's weight.
-* **Full arms have two joints** (shoulder and elbow), so they bend like a real arm. When worn,
-  both joints copy the healthy arm. If there isn't a healthy arm, the arm hangs naturally with a
-  slight bend. Lying loose on the floor, the forearm flops freely and only bends the way a real elbow does.
+* **Full arms and full legs have two joints** (shoulder + elbow, hip + knee), so they bend like real limbs.
+  Lying loose on the floor the lower half flops freely, but elbows only bend forward and knees only bend back.
+* Worn arms copy whatever the healthy arm is doing at both joints. If there isn't a healthy arm, the arm hangs
+  naturally with a slight bend.
+* Worn legs hold the hip and knee straight, with enough torque to bear the wearer's weight. A hard hit
+  can buckle the knee, and it springs straight again afterwards.
 
 ## The prosthetics
 
@@ -43,9 +44,9 @@ collide with it. If you touch the wrong body part of someone it would fit, a hin
 | ![](thumbs/peg_leg.png) | Pirate Peg Leg | lower leg | — (stiff oak peg, arr) |
 | ![](thumbs/running_blade.png) | Carbon Running Blade | lower leg | spring jump |
 | ![](thumbs/pogo_leg.png) | Pogo Spring Leg | lower leg | squash-and-stretch BOING jump |
-| ![](thumbs/medical_leg.png) | Medical Prosthetic Leg | full leg | — (hydraulic knee, fresh sneakers) |
-| ![](thumbs/cyber_leg.png) | Cyber Leg MK-II | full leg | hydraulic leap + shockwave, glowing reactor knee |
-| ![](thumbs/rocket_leg.png) | Rocket Leg | full leg | toggle thruster (with flame, smoke and a light) |
+| ![](thumbs/medical_leg.png) | Medical Prosthetic Leg | full leg | — (working hydraulic knee, fresh sneakers) |
+| ![](thumbs/cyber_leg.png) | Cyber Leg MK-II | full leg | hydraulic leap + shockwave; glowing reactor knee joint |
+| ![](thumbs/rocket_leg.png) | Rocket Leg | full leg | toggle thruster (with flame, smoke and a light); jointed knee |
 | ![](thumbs/hook.png) | Pirate Hook | forearm | hook onto objects *or walls* to hang from them; activate again to let go |
 | ![](thumbs/claw.png) | Hydraulic Claw | forearm | clamp onto things (open/closed animation) |
 | ![](thumbs/medical_arm.png) | Medical Prosthetic Arm | full arm | — (jointed elbow, robotic hand) |
@@ -60,11 +61,11 @@ collide with it. If you touch the wrong body part of someone it would fit, a hin
 ```
 mod.json                 mod manifest
 Main.cs                  registers the 14 items
-ProstheticBehaviour.cs   stump detection, fitting, sizing, servo joints, jointed forearms, detaching
+ProstheticBehaviour.cs   stump detection, fitting, sizing, servo joints, jointed elbows/knees, detaching
 Abilities.cs             activation abilities (jump, grab, cannon, punch, drill, rocket, light, bling)
 FX.cs                    asset loading + lightweight particle/shockwave/blast helpers
 SpriteData.cs            socket/tip pixel coordinates (generated)
-sprites/ thumbs/ fx/     pixel art (full arms are split into _upper / _lower pieces)
+sprites/ thumbs/ fx/     pixel art (full arms and legs are split into _upper / _lower pieces)
 category.png             spawn-menu tab icon
 sfx/                     sound effects
 ```

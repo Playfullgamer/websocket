@@ -17,6 +17,9 @@ namespace Mod
             if (category == null) category = FindCategory("Misc.") ?? FindCategory("Entities");
             Sprite medicalForearm = ModAPI.LoadSprite("sprites/medical_arm_lower.png");
             Sprite cyberForearm = ModAPI.LoadSprite("sprites/cyber_arm_lower.png");
+            Sprite medicalShin = ModAPI.LoadSprite("sprites/medical_leg_lower.png");
+            Sprite cyberShin = ModAPI.LoadSprite("sprites/cyber_leg_lower.png");
+            Sprite rocketShin = ModAPI.LoadSprite("sprites/rocket_leg_lower.png");
 
             // ---------------------------------------------------------------- legs
             Add("Pirate Peg Leg", "peg_leg", ProstheticSlot.LowerLeg, SpriteData.PegLegAttach, SpriteData.PegLegTip, "Wood",
@@ -46,16 +49,17 @@ namespace Mod
                     s.SquashSprite = Res.PogoSquash;
                 });
 
-            Add("Medical Prosthetic Leg", "medical_leg", ProstheticSlot.FullLeg, SpriteData.MedicalLegAttach, SpriteData.MedicalLegTip, "Plastic",
-                "A modern above-knee prosthesis with a hydraulic knee and a fresh pair of sneakers. " +
+            Add("Medical Prosthetic Leg", "medical_leg_upper", "medical_leg", ProstheticSlot.FullLeg, SpriteData.MedicalLegAttach, SpriteData.MedicalLegTip, "Plastic",
+                "A modern above-knee prosthesis with a working hydraulic knee and a fresh pair of sneakers. " +
                 "Touch it to the HIPS (lower body) of anyone missing an entire leg.",
-                null);
+                p => { p.BuildSegment(medicalShin, SpriteData.MedicalLegJoint, SpriteData.MedicalLegLowerJoint, SpriteData.MedicalLegTip); });
 
-            Add("Cyber Leg MK-II", "cyber_leg", ProstheticSlot.FullLeg, SpriteData.CyberLegAttach, SpriteData.CyberLegTip, "Metal",
+            Add("Cyber Leg MK-II", "cyber_leg_upper", "cyber_leg", ProstheticSlot.FullLeg, SpriteData.CyberLegAttach, SpriteData.CyberLegTip, "Metal",
                 "Military-grade chrome leg with a glowing reactor knee. Touch it to the HIPS (lower body) of anyone missing an entire leg. " +
                 "Activate for a hydraulic leap that knocks everything nearby away.",
                 p =>
                 {
+                    p.BuildSegment(cyberShin, SpriteData.CyberLegJoint, SpriteData.CyberLegLowerJoint, SpriteData.CyberLegTip);
                     SpringJump s = p.gameObject.AddComponent<SpringJump>();
                     s.Power = 14f;
                     s.Sound = Res.Leap;
@@ -63,10 +67,14 @@ namespace Mod
                     p.gameObject.AddComponent<CoreGlow>().CorePixel = new Vector2(9f, 34f);
                 });
 
-            Add("Rocket Leg", "rocket_leg", ProstheticSlot.FullLeg, SpriteData.RocketLegAttach, SpriteData.RocketLegTip, "Metal",
+            Add("Rocket Leg", "rocket_leg_upper", "rocket_leg", ProstheticSlot.FullLeg, SpriteData.RocketLegAttach, SpriteData.RocketLegTip, "Metal",
                 "Why walk when you can fly? Touch it to the HIPS (lower body) of anyone missing an entire leg. " +
                 "Activate to toggle the thruster.",
-                p => { p.gameObject.AddComponent<RocketThruster>(); });
+                p =>
+                {
+                    p.BuildSegment(rocketShin, SpriteData.RocketLegJoint, SpriteData.RocketLegLowerJoint, SpriteData.RocketLegTip);
+                    p.gameObject.AddComponent<RocketThruster>();
+                });
 
             // ---------------------------------------------------------------- arms
             Add("Pirate Hook", "hook", ProstheticSlot.Forearm, SpriteData.HookAttach, SpriteData.HookTip, "Metal",
@@ -82,14 +90,14 @@ namespace Mod
             Add("Medical Prosthetic Arm", "medical_arm_upper", "medical_arm", ProstheticSlot.FullArm, SpriteData.MedicalArmAttach, SpriteData.MedicalArmTip, "Plastic",
                 "A myoelectric arm with a working elbow and an articulated hand that mirrors the wearer's other arm. " +
                 "Touch it to the CHEST (upper body) of anyone missing an entire arm.",
-                p => { p.BuildForearm(medicalForearm, SpriteData.MedicalArmElbow, SpriteData.MedicalArmLowerElbow, SpriteData.MedicalArmTip); });
+                p => { p.BuildSegment(medicalForearm, SpriteData.MedicalArmJoint, SpriteData.MedicalArmLowerJoint, SpriteData.MedicalArmTip); });
 
             Add("Cyber Arm MK-II", "cyber_arm_upper", "cyber_arm", ProstheticSlot.FullArm, SpriteData.CyberArmAttach, SpriteData.CyberArmTip, "Metal",
                 "Chrome combat arm with a reactor shoulder and a powered elbow. Touch it to the CHEST (upper body) of anyone missing an entire arm. " +
                 "Activate for a rocket-powered punch.",
                 p =>
                 {
-                    p.BuildForearm(cyberForearm, SpriteData.CyberArmElbow, SpriteData.CyberArmLowerElbow, SpriteData.CyberArmTip);
+                    p.BuildSegment(cyberForearm, SpriteData.CyberArmJoint, SpriteData.CyberArmLowerJoint, SpriteData.CyberArmTip);
                     p.gameObject.AddComponent<PowerPunch>();
                     p.gameObject.AddComponent<CoreGlow>().CorePixel = new Vector2(9f, 7f);
                 });

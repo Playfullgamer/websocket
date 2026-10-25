@@ -11,12 +11,6 @@ namespace BionicProsthetics
         public static readonly Vector2 RunningBladeTip = new Vector2(17f, 46f);
         public static readonly Vector2 PogoLegAttach = new Vector2(8f, 6f);
         public static readonly Vector2 PogoLegTip = new Vector2(8f, 46f);
-        public static readonly Vector2 MedicalLegAttach = new Vector2(8f, 6f);
-        public static readonly Vector2 MedicalLegTip = new Vector2(14f, 79f);
-        public static readonly Vector2 CyberLegAttach = new Vector2(9f, 6f);
-        public static readonly Vector2 CyberLegTip = new Vector2(15f, 79f);
-        public static readonly Vector2 RocketLegAttach = new Vector2(10f, 7f);
-        public static readonly Vector2 RocketLegTip = new Vector2(10f, 82f);
         public static readonly Vector2 HookAttach = new Vector2(7f, 7f);
         public static readonly Vector2 HookTip = new Vector2(15f, 30f);
         public static readonly Vector2 ClawAttach = new Vector2(9f, 5f);
@@ -30,12 +24,24 @@ namespace BionicProsthetics
         public static readonly Vector2 GoldenHandAttach = new Vector2(8f, 6f);
         public static readonly Vector2 GoldenHandTip = new Vector2(8f, 42f);
         public static readonly Vector2 MedicalArmAttach = new Vector2(8f, 5f);
-        public static readonly Vector2 MedicalArmElbow = new Vector2(8.5f, 34.0f);
-        public static readonly Vector2 MedicalArmLowerElbow = new Vector2(8.5f, 8.0f);
+        public static readonly Vector2 MedicalArmJoint = new Vector2(8.5f, 34.0f);
+        public static readonly Vector2 MedicalArmLowerJoint = new Vector2(8.5f, 8.0f);
         public static readonly Vector2 MedicalArmTip = new Vector2(8f, 45f);
         public static readonly Vector2 CyberArmAttach = new Vector2(9f, 7f);
-        public static readonly Vector2 CyberArmElbow = new Vector2(9.5f, 34.5f);
-        public static readonly Vector2 CyberArmLowerElbow = new Vector2(9.5f, 8.5f);
+        public static readonly Vector2 CyberArmJoint = new Vector2(9.5f, 34.5f);
+        public static readonly Vector2 CyberArmLowerJoint = new Vector2(9.5f, 8.5f);
         public static readonly Vector2 CyberArmTip = new Vector2(9f, 44f);
+        public static readonly Vector2 MedicalLegAttach = new Vector2(8f, 6f);
+        public static readonly Vector2 MedicalLegJoint = new Vector2(8.5f, 31.0f);
+        public static readonly Vector2 MedicalLegLowerJoint = new Vector2(8.5f, 8.0f);
+        public static readonly Vector2 MedicalLegTip = new Vector2(14f, 56f);
+        public static readonly Vector2 CyberLegAttach = new Vector2(9f, 6f);
+        public static readonly Vector2 CyberLegJoint = new Vector2(9.5f, 34.5f);
+        public static readonly Vector2 CyberLegLowerJoint = new Vector2(9.5f, 8.5f);
+        public static readonly Vector2 CyberLegTip = new Vector2(15f, 53f);
+        public static readonly Vector2 RocketLegAttach = new Vector2(10f, 7f);
+        public static readonly Vector2 RocketLegJoint = new Vector2(10.5f, 37.0f);
+        public static readonly Vector2 RocketLegLowerJoint = new Vector2(10.5f, 8.0f);
+        public static readonly Vector2 RocketLegTip = new Vector2(10f, 53f);
     }
 }
