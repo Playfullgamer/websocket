@@ -2,7 +2,7 @@
 
 ![banner](thumb.png)
 
-Lost a limb? Not a problem. This mod adds **30 prosthetics** with custom art that snap onto
+Lost a limb? Not a problem. This mod adds **35 prosthetics** with custom art that snap onto
 stumps, resize themselves to fit the wearer, and move within the range of a real limb.
 Most of them do something when you activate them.
 
@@ -69,6 +69,11 @@ collide with it. If you touch the wrong body part of someone it would fit, a hin
 | ![](thumbs/cyber_foot.png) | Cyber Foot | foot | stomp shockwave; glowing sole |
 | ![](thumbs/wood_foot.png) | Pirate Wooden Foot | foot | — (carved oak, iron-nailed sole) |
 | ![](thumbs/skate_foot.png) | Roller Skate Foot | foot | rolls nearly frictionless; activate to kick off and glide |
+| ![](thumbs/rocket_boot.png) | Rocket Boot | foot | heel thruster: toggle to fly (or flail) |
+| ![](thumbs/spike_foot.png) | Spiked Stomper | foot | stomp on someone to impale them; activate to pull free |
+| ![](thumbs/magnet_boot.png) | Magnet Boot | foot | lock onto the floor, walls or ceiling; activate again to release |
+| ![](thumbs/golden_foot.png) | 24K Golden Foot | foot | glints all the time; activate for a shower of sparkles |
+| ![](thumbs/flipper_foot.png) | Scuba Flipper | foot | flap kick |
 | ![](thumbs/hook.png) | Pirate Hook | forearm | impales on a hard swing; activate to hook onto people, objects or walls |
 | ![](thumbs/claw.png) | Hydraulic Claw | forearm | clamp onto people and things (open/closed animation) |
 | ![](thumbs/medical_arm.png) | Medical Prosthetic Arm | full arm | — (jointed elbow, robotic hand) |
@@ -89,7 +94,7 @@ collide with it. If you touch the wrong body part of someone it would fit, a hin
 
 ```
 mod.json                 mod manifest
-Main.cs                  registers the 30 items
+Main.cs                  registers the 35 items
 ProstheticBehaviour.cs   stump detection, fitting, sizing, servo joints, jointed elbows/knees, modular mounting
 Abilities.cs             activation abilities (jump, grab, cannon, punch, drill, rocket, light, bling, steam, lightning)
 FX.cs                    asset loading + lightweight particle/shockwave/blast helpers

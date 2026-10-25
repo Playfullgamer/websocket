@@ -195,6 +195,49 @@ namespace Mod
                     p.gameObject.AddComponent<SkateBoost>();
                 });
 
+            Add("Rocket Boot", "rocket_boot", ProstheticSlot.Foot, SpriteData.RocketBootAttach, SpriteData.RocketBootTip, "Metal",
+                "A boot with a thruster in the heel." + footHelp + " Activate to toggle the thruster. Hold on to something.",
+                p =>
+                {
+                    p.LockJoint = true;
+                    p.gameObject.AddComponent<RocketThruster>();
+                });
+
+            Add("Spiked Stomper", "spike_foot", ProstheticSlot.Foot, SpriteData.SpikeFootAttach, SpriteData.SpikeFootTip, "Metal",
+                "An iron boot with steel spikes on the sole." + footHelp + " Stomp on someone to impale them; activate to pull free.",
+                p =>
+                {
+                    p.LockJoint = true;
+                    p.gameObject.AddComponent<Grabber>().Impales = true;
+                });
+
+            Add("Magnet Boot", "magnet_boot", ProstheticSlot.Foot, SpriteData.MagnetBootAttach, SpriteData.MagnetBootTip, "Metal",
+                "An electromagnetic boot." + footHelp + " Activate to lock onto the floor, a wall or the ceiling (or whatever it touches), again to release.",
+                p =>
+                {
+                    p.LockJoint = true;
+                    p.gameObject.AddComponent<Grabber>().PreferSurfaces = true;
+                });
+
+            Add("24K Golden Foot", "golden_foot", ProstheticSlot.Foot, SpriteData.GoldenFootAttach, SpriteData.GoldenFootTip, "Metal",
+                "Solid gold, sculpted toes, a ruby and an emerald. Utterly impractical." + footHelp + " Activate to show off.",
+                p =>
+                {
+                    p.LockJoint = true;
+                    p.gameObject.AddComponent<Sparkle>();
+                });
+
+            Add("Scuba Flipper", "flipper_foot", ProstheticSlot.Foot, SpriteData.FlipperFootAttach, SpriteData.FlipperFootTip, "Plastic",
+                "A rubber diving fin. Walking is awkward, but it looks great." + footHelp + " Activate for a big flap kick.",
+                p =>
+                {
+                    p.LockJoint = true;
+                    SkateBoost flap = p.gameObject.AddComponent<SkateBoost>();
+                    flap.Slippery = false;
+                    flap.Power = 4f;
+                    flap.Sound = Res.Boing;
+                });
+
             // ---------------------------------------------------------------- more full arms (all with a working elbow)
             Add("Steampunk Arm", "steampunk_arm_upper", "steampunk_arm", ProstheticSlot.FullArm, SpriteData.SteampunkArmAttach, SpriteData.SteampunkArmTip, "Metal",
                 "Brass and copper, pistons and a pressure gauge. Touch it to the CHEST (upper body) of anyone missing an entire arm. " +

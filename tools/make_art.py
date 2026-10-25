@@ -772,6 +772,106 @@ def skate_foot():
     return c, (8, 4), (12, 20)
 
 
+def rocket_boot():
+    c = Canvas(28, 22)
+    cx = 8.5
+    socket(c, 1, 6, cx, 12, GUNMETAL, strap=RUBBER, buckle=STEEL, strap_row=4)
+    for y in range(7, 14):  # orange boot
+        x1 = 13 + int((y - 7) * 1.5)
+        c.hspan(y, 3, min(x1, 22), ORANGE, spec=(y < 10))
+    for y in range(8, 11):  # hazard stripes
+        for x in range(4, 13):
+            if ((x + y) // 2) % 2 == 0:
+                c.put(x, y, (240, 236, 220))
+    c.rect(3, 14, 22, 14, STEEL[1])
+    for y in range(15, 20):  # heel thruster bell
+        w = 5 + (y - 15) * 0.8
+        x0 = int(round(cx - w / 2))
+        c.hspan(y, x0, x0 + int(round(w)) - 1, STEEL)
+    for x in range(int(cx - 3), int(cx + 4)):
+        c.put(x, 20, ORANGE[3] if abs(x - cx) < 2.5 else STEEL[0])
+    c.outline()
+    return c, (8, 4), (8, 20)
+
+
+def spike_foot():
+    c = Canvas(28, 22)
+    cx = 8.5
+    socket(c, 1, 6, cx, 12, LEATHER, strap=STEEL, buckle=None, strap_row=4)
+    for y in range(7, 15):  # riveted iron boot
+        x1 = 13 + int((y - 7) * 1.5)
+        c.hspan(y, 3, min(x1, 23), GUNMETAL, spec=(y < 10))
+    for x in (6, 11, 16, 20):
+        c.bolt(x, 11, STEEL)
+    c.rect(3, 15, 23, 15, GUNMETAL[0])
+    for sx in (5, 10, 15, 20):  # sole spikes
+        for i in range(5):
+            half = (4 - i) * 0.5
+            c.hspan(16 + i, int(round(sx - half)), int(round(sx + half)), STEEL, spec=False)
+        c.put(sx, 20, STEEL[4])
+    c.outline()
+    return c, (8, 4), (13, 20)
+
+
+def magnet_boot():
+    c = Canvas(28, 22)
+    cx = 8.5
+    socket(c, 1, 6, cx, 12, GUNMETAL, strap=RUBBER, buckle=STEEL, strap_row=4)
+    for y in range(7, 14):  # boot
+        x1 = 13 + int((y - 7) * 1.4)
+        c.hspan(y, 3, min(x1, 22), GUNMETAL, spec=(y < 10))
+    c.disk(15, 10, 1.5, CYAN[2])  # power light
+    c.rect(3, 14, 22, 15, STEEL[1])
+    c.cyl(3, 16, 22, 18, RED)  # magnet sole
+    for x0 in (3, 19):  # steel pole tips
+        c.cyl(x0, 16, x0 + 3, 19, STEEL)
+    c.hspan(19, 7, 18, RED, spec=False)
+    c.glow([CYAN[2]], radius=1, alpha=90)
+    c.outline()
+    return c, (8, 4), (13, 19)
+
+
+def golden_foot():
+    c = Canvas(28, 20)
+    cx = 8.5
+    socket(c, 1, 6, cx, 12, RED, strap=GOLD, buckle=None, strap_row=4)
+    c.shaded_disk(cx, 5, 1.4, BLUEPAINT)  # sapphire
+    c.cyl(4, 7, 13, 10, GOLD)
+    for y in range(10, 16):  # golden foot
+        x1 = 13 + int((y - 10) * 2.0)
+        c.hspan(y, 3, min(x1, 24), GOLD, spec=(y < 13))
+    for i, x in enumerate((17, 19.5, 22, 24)):  # sculpted toes
+        c.disk(x, 15.2 - i * 0.2, 1.3, GOLD[2])
+        c.put(x - 0.5, 14.6 - i * 0.2, GOLD[4])
+    c.put(10, 12, RED[3])  # ruby
+    c.put(14, 13, (120, 230, 170))  # emerald
+    c.rect(3, 16, 24, 17, GOLD[1])
+    c.outline()
+    return c, (8, 4), (13, 17)
+
+
+def flipper_foot():
+    c = Canvas(34, 20)
+    cx = 8.5
+    socket(c, 1, 6, cx, 12, RUBBER, strap=YELLOW, buckle=None, strap_row=4)
+    green = [(20, 80, 50), (30, 120, 70), (50, 170, 100), (110, 220, 150), (200, 255, 220)]
+    for y in range(7, 13):  # foot pocket
+        x1 = 13 + int((y - 7) * 1.2)
+        c.hspan(y, 3, x1, green, spec=(y < 9))
+    for x in range(13, 33):  # long fin, thinning towards the tip
+        t = (x - 13) / 20
+        top = int(round(10 + t * 3))
+        bot = 16
+        for y in range(top, bot + 1):
+            col = green[2] if (x + y) % 4 else green[1]
+            c.put(x, y, col if y > top else green[3])
+    for x in range(14, 32, 4):  # ribs
+        c.line(x, 11 + (x - 13) * 0.15, x + 1, 15.5, green[0])
+    c.rect(3, 13, 14, 16, green[1])
+    c.outline()
+    return c, (8, 4), (12, 17)
+
+
 # ---------------------------------------------------------------- more full arms
 # Drawn whole with the elbow centred at y=34, then cut in two by split_limb.
 
@@ -1249,6 +1349,11 @@ def main():
         "cyber_foot": cyber_foot,
         "wood_foot": wood_foot,
         "skate_foot": skate_foot,
+        "rocket_boot": rocket_boot,
+        "spike_foot": spike_foot,
+        "magnet_boot": magnet_boot,
+        "golden_foot": golden_foot,
+        "flipper_foot": flipper_foot,
     }
     sprites, meta = {}, {}
     for name, fn in builders.items():

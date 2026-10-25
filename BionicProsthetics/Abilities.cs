@@ -109,6 +109,8 @@ namespace BionicProsthetics
         public Sprite ClosedSprite;
         /// <summary>Hooks: a hard swing into something sticks the point in; activate (or a hard yank) frees it.</summary>
         public bool Impales;
+        /// <summary>Magnet boots: clamp to the floor/walls first, loose things only when no surface is in reach.</summary>
+        public bool PreferSurfaces;
 
         Sprite openSprite;
         Joint2D grip;
@@ -167,7 +169,7 @@ namespace BionicProsthetics
             {
                 if (c.isTrigger || P.IsOwnBody(c)) continue;
                 bool loose = c.attachedRigidbody != null && c.attachedRigidbody.bodyType == RigidbodyType2D.Dynamic;
-                float score = Vector2.Distance(c.ClosestPoint(tip), tip) + (loose ? 0f : radius);
+                float score = Vector2.Distance(c.ClosestPoint(tip), tip) + (loose != PreferSurfaces ? 0f : radius);
                 if (score < bestScore)
                 {
                     bestScore = score;
@@ -717,13 +719,17 @@ namespace BionicProsthetics
         }
     }
 
-    /// <summary>Roller skate foot: rolls almost without friction; activate to kick off and glide forward.</summary>
+    /// <summary>Roller skate (rolls almost without friction) and flipper feet: activate to kick off forward.</summary>
     public class SkateBoost : ProstheticAbility
     {
+        public float Power = 6f;
+        public bool Slippery = true;
+        public AudioClip Sound;
         float readyTime;
 
         void Start()
         {
+            if (!Slippery) return;
             PhysicsMaterial2D wheels = new PhysicsMaterial2D("Skate wheels");
             wheels.friction = 0.02f;
             wheels.bounciness = 0f;
@@ -735,8 +741,8 @@ namespace BionicProsthetics
             if (Time.time < readyTime || !P.Grounded) return;
             readyTime = Time.time + 0.4f;
             Vector2 forward = new Vector2(Mathf.Sign(transform.localScale.x), 0f);
-            foreach (Rigidbody2D rb in P.WearerBodies()) rb.velocity += forward * 6f;
-            P.Play(Res.Spring, 0.7f);
+            foreach (Rigidbody2D rb in P.WearerBodies()) rb.velocity += forward * Power;
+            P.Play(Sound != null ? Sound : Res.Spring, 0.7f);
             float L = P.WorldLength;
             FX.Spray(Res.Puff, P.TipWorld, -forward, 25f, new Color(0.85f, 0.8f, 0.7f, 0.7f), 6, L * 6f, L * 0.4f, L * 1f, 0.5f, 0f, P.Renderer);
             FX.Spray(Res.Spark, P.TipWorld, -forward, 20f, new Color(1f, 0.85f, 0.4f), 6, L * 8f, L * 0.12f, 0f, 0.3f, 0f, P.Renderer);

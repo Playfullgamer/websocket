@@ -31,6 +31,16 @@ namespace BionicProsthetics
         public static readonly Vector2 WoodFootTip = new Vector2(13f, 18f);
         public static readonly Vector2 SkateFootAttach = new Vector2(8f, 4f);
         public static readonly Vector2 SkateFootTip = new Vector2(12f, 20f);
+        public static readonly Vector2 RocketBootAttach = new Vector2(8f, 4f);
+        public static readonly Vector2 RocketBootTip = new Vector2(8f, 20f);
+        public static readonly Vector2 SpikeFootAttach = new Vector2(8f, 4f);
+        public static readonly Vector2 SpikeFootTip = new Vector2(13f, 20f);
+        public static readonly Vector2 MagnetBootAttach = new Vector2(8f, 4f);
+        public static readonly Vector2 MagnetBootTip = new Vector2(13f, 19f);
+        public static readonly Vector2 GoldenFootAttach = new Vector2(8f, 4f);
+        public static readonly Vector2 GoldenFootTip = new Vector2(13f, 17f);
+        public static readonly Vector2 FlipperFootAttach = new Vector2(8f, 4f);
+        public static readonly Vector2 FlipperFootTip = new Vector2(12f, 17f);
         public static readonly Vector2 MedicalArmAttach = new Vector2(8f, 5f);
         public static readonly Vector2 MedicalArmJoint = new Vector2(8.5f, 34.0f);
         public static readonly Vector2 MedicalArmLowerJoint = new Vector2(8.5f, 8.0f);
