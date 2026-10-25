@@ -26,7 +26,8 @@ The prosthetics get their own **Prosthetics** tab in the spawn menu (if the game
 | Modular upper arm | the upper arm | the **chest**, then plug any forearm into its elbow |
 | Modular thigh | the upper leg | the **hips**, then plug any lower leg into its knee |
 
-It clicks into place with a servo sound. It is scaled to match the wearer's other limbs
+It clicks into place with a servo sound. It is sized by measuring the wearer's healthy limb joint to joint
+(hip, knee, ankle down to the sole; shoulder, elbow, fingertips), so feet reach the floor exactly like the real foot. It is
 and drawn in the right layer: front arms over the body and legs, back arms behind everything. The wearer's own body won't
 collide with it. If you touch the wrong body part of someone it would fit, a hint tells you where it goes.
 

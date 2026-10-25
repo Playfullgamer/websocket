@@ -480,6 +480,97 @@ namespace BionicProsthetics
             }
         }
 
+        /// <summary>World position of the hinge joining a limb to its parent, if they are still joined.</summary>
+        static bool HingePoint(LimbBehaviour child, LimbBehaviour parent, out Vector2 point)
+        {
+            point = Vector2.zero;
+            if (child == null || parent == null) return false;
+            bool inverted;
+            HingeJoint2D j = FindHinge(child.GetComponent<Rigidbody2D>(), parent.GetComponent<Rigidbody2D>(), out inverted);
+            if (j == null) return false;
+            point = j.transform.TransformPoint(j.anchor);
+            return true;
+        }
+
+        /// <summary>How far a body's collision shape reaches past a point along a direction (e.g. from the knee down to the sole).</summary>
+        static float Reach(Rigidbody2D body, Vector2 from, Vector2 dir)
+        {
+            if (body == null) return 0f;
+            List<Collider2D> colliders = new List<Collider2D>();
+            body.GetAttachedColliders(colliders);
+            float best = 0f;
+            foreach (Collider2D c in colliders)
+            {
+                if (c == null || c.isTrigger || !c.enabled) continue;
+                Vector2 extreme = c.ClosestPoint(from + dir * 100f);
+                best = Mathf.Max(best, Vector2.Dot(extreme - from, dir));
+            }
+            return best;
+        }
+
+        static Rigidbody2D BodyOf(LimbBehaviour limb)
+        {
+            return limb != null ? limb.GetComponent<Rigidbody2D>() : null;
+        }
+
+        static Vector2 DownOf(Component c)
+        {
+            return -(Vector2)c.transform.up;
+        }
+
+        /// <summary>
+        /// Length the replaced limb should have, measured on the healthy twin from joint to tip using its real
+        /// joints and collision shapes, so it doesn't matter how the twin is bent. 0 when it can't be measured.
+        /// </summary>
+        float MeasureTwin(Dictionary<string, LimbBehaviour> limbs, string twinSide)
+        {
+            if (twinSide == null) return 0f;
+            if (IsArm)
+            {
+                LimbBehaviour upper = Get(limbs, "UpperArm" + twinSide);
+                LimbBehaviour lower = Get(limbs, "LowerArm" + twinSide);
+                Vector2 shoulder, elbow;
+                bool hasShoulder = HingePoint(upper, Get(limbs, "UpperBody"), out shoulder);
+                bool hasElbow = HingePoint(lower, upper, out elbow);
+                if (!hasElbow) return 0f;
+                float forearm = Reach(BodyOf(lower), elbow, DownOf(lower));
+                if (Slot == ProstheticSlot.Forearm) return forearm;
+                if (!hasShoulder) return 0f;
+                float upperArm = Vector2.Distance(shoulder, elbow);
+                return Slot == ProstheticSlot.UpperArm ? upperArm : upperArm + forearm;
+            }
+            LimbBehaviour thigh = Get(limbs, "UpperLeg" + twinSide);
+            LimbBehaviour shin = Get(limbs, "LowerLeg" + twinSide);
+            LimbBehaviour foot = Get(limbs, "Foot" + twinSide);
+            Vector2 hip, knee, ankle;
+            bool hasHip = HingePoint(thigh, Get(limbs, "LowerBody"), out hip);
+            bool hasKnee = HingePoint(shin, thigh, out knee);
+            bool hasAnkle = HingePoint(foot, shin, out ankle);
+            if (!hasKnee) return 0f;
+            // Knee down to the sole: through the foot when there is one, otherwise to the end of the shin.
+            float belowKnee = hasAnkle
+                ? Vector2.Distance(knee, ankle) + Reach(BodyOf(foot), ankle, DownOf(shin))
+                : Reach(BodyOf(shin), knee, DownOf(shin));
+            if (Slot == ProstheticSlot.LowerLeg) return belowKnee;
+            if (!hasHip) return 0f;
+            float thighLength = Vector2.Distance(hip, knee);
+            return Slot == ProstheticSlot.UpperLeg ? thighLength : thighLength + belowKnee;
+        }
+
+        /// <summary>This prosthetic measured the same way as MeasureTwin, at its current scale.</summary>
+        float MeasureSelf(Vector2 attachLocal)
+        {
+            Physics2D.SyncTransforms();
+            Vector2 attach = transform.TransformPoint(attachLocal);
+            if (IsMount) return Vector2.Distance(attach, transform.TransformPoint(MountLocal));
+            if (segment != null)
+            {
+                Vector2 joint = transform.TransformPoint(PixelToLocal(jointPixel));
+                return Vector2.Distance(attach, joint) + Reach(SegmentBody, joint, -(Vector2)segment.transform.up);
+            }
+            return Reach(Body, attach, -(Vector2)transform.up);
+        }
+
         /// <summary>Where the missing limb used to hinge, in the anchor's local space, guessed from its sprite.</summary>
         Vector2 EstimateAnchorPoint(Component anchor)
         {
@@ -528,8 +619,20 @@ namespace BionicProsthetics
                     + PixelToLocal(SegmentRenderer.sprite, segmentJointPixel).y - SegmentRenderer.sprite.bounds.min.y;
             }
             ownLength = Mathf.Max(0.01f, ownLength);
-            float expected = ExpectedLength(limbs, anchor, twin, twinSide);
-            float scale = expected > 0.01f ? Mathf.Clamp(expected / ownLength, 0.02f, 50f) : Mathf.Abs(transform.localScale.y);
+            // Best: measure the healthy limb joint-to-tip and ourselves the same way, so the sole lands exactly
+            // where the healthy foot does. Otherwise fall back to estimating from sprite sizes.
+            float scale;
+            float expected = MeasureTwin(limbs, twinSide);
+            float measured = expected > 0.01f ? MeasureSelf(attachLocal) : 0f;
+            if (measured > 0.001f)
+            {
+                scale = Mathf.Clamp(Mathf.Abs(transform.localScale.y) * expected / measured, 0.02f, 50f);
+            }
+            else
+            {
+                expected = ExpectedLength(limbs, anchor, twin, twinSide);
+                scale = expected > 0.01f ? Mathf.Clamp(expected / ownLength, 0.02f, 50f) : Mathf.Abs(transform.localScale.y);
+            }
             float facing = Mathf.Sign(anchor.transform.lossyScale.x);
             transform.localScale = new Vector3(facing * scale, scale, 1f);
 
