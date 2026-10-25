@@ -240,25 +240,30 @@ namespace BionicProsthetics
 
         void OnCollisionEnter2D(Collision2D collision)
         {
-            lastContactTime = Time.time;
-            Consider(collision.collider);
+            OnPartContact(collision.collider, collision.relativeVelocity.magnitude);
         }
 
         void OnCollisionStay2D(Collision2D collision)
         {
-            OnPartContact(collision.collider);
+            OnPartContact(collision.collider, 0f);
         }
 
-        /// <summary>Contact on any part of the prosthetic (the segment reports through here too).</summary>
-        public void OnPartContact(Collider2D other)
+        /// <summary>
+        /// Contact on any part of the prosthetic (the segment reports through here too). impactSpeed is the
+        /// closing speed of a fresh hit, or 0 for something that is just resting against it.
+        /// </summary>
+        public void OnPartContact(Collider2D other, float impactSpeed)
         {
             lastContactTime = Time.time;
-            if (Time.time < nextProbeTime) return;
-            nextProbeTime = Time.time + 0.15f;
-            Consider(other);
+            if (impactSpeed <= 0f)
+            {
+                if (Time.time < nextProbeTime) return;
+                nextProbeTime = Time.time + 0.15f;
+            }
+            Consider(other, impactSpeed);
         }
 
-        void Consider(Collider2D col)
+        void Consider(Collider2D col, float impactSpeed)
         {
             if (Attached || Time.time < nextAttachTime) return;
             ProstheticBehaviour other = PartOwner(col);
@@ -268,7 +273,7 @@ namespace BionicProsthetics
                 return;
             }
             LimbBehaviour limb = col.GetComponentInParent<LimbBehaviour>();
-            if (limb != null) TryAttach(limb);
+            if (limb != null) TryAttach(limb, impactSpeed);
         }
 
         static void SlotNames(ProstheticSlot slot, out string anchorBase, out string replacedBase)
@@ -354,7 +359,7 @@ namespace BionicProsthetics
             AttachTo(person, LimbMap(person), mount, side != null ? replacedBase + side : null, side, announce);
         }
 
-        public bool TryAttach(LimbBehaviour touched)
+        public bool TryAttach(LimbBehaviour touched, float impactSpeed)
         {
             PersonBehaviour person = touched.GetComponentInParent<PersonBehaviour>();
             if (person == null) return false;
@@ -368,14 +373,14 @@ namespace BionicProsthetics
             {
                 // Touching anywhere on the torso works; fill the front side first.
                 string torsoPart = IsArm ? "UpperBody" : "LowerBody";
-                if (touched.name != torsoPart && touched.name != "MiddleBody") return Hint(limbs, anchorBase, replacedBase);
+                if (touched.name != torsoPart && touched.name != "MiddleBody") return Hint(limbs, anchorBase, replacedBase, impactSpeed);
                 anchorName = anchorBase;
                 sides.Add("Front");
                 sides.Add("");
             }
             else
             {
-                if (touched.name != anchorBase && touched.name != anchorBase + "Front") return Hint(limbs, anchorBase, replacedBase);
+                if (touched.name != anchorBase && touched.name != anchorBase + "Front") return Hint(limbs, anchorBase, replacedBase, impactSpeed);
                 anchorName = touched.name;
                 sides.Add(touched.name.EndsWith("Front") ? "Front" : "");
             }
@@ -394,13 +399,16 @@ namespace BionicProsthetics
                     return true;
                 }
             }
-            return Hint(limbs, anchorBase, replacedBase);
+            return Hint(limbs, anchorBase, replacedBase, impactSpeed);
         }
 
-        /// <summary>Touched the wrong body part of someone this would fit? Say where it goes.</summary>
-        bool Hint(Dictionary<string, LimbBehaviour> limbs, string anchorBase, string replacedBase)
+        /// <summary>
+        /// Pushed into the wrong body part of someone this would fit? Say where it goes. Only on a real,
+        /// fresh impact (someone moving it), never for a prosthetic that is just lying against a person.
+        /// </summary>
+        bool Hint(Dictionary<string, LimbBehaviour> limbs, string anchorBase, string replacedBase, float impactSpeed)
         {
-            if (Time.time < nextHintTime) return false;
+            if (impactSpeed < 1f || Time.time < nextHintTime) return false;
             foreach (string side in new string[] { "", "Front" })
             {
                 LimbBehaviour anchor = Get(limbs, IsTorsoMounted ? anchorBase : anchorBase + side);
@@ -408,7 +416,7 @@ namespace BionicProsthetics
                 if (anchor == null) continue;
                 if (existing == null || !Connected(existing.GetComponent<Rigidbody2D>(), anchor.GetComponent<Rigidbody2D>()))
                 {
-                    nextHintTime = Time.time + 4f;
+                    nextHintTime = Time.time + 10f;
                     string where;
                     switch (Slot)
                     {
@@ -988,12 +996,12 @@ namespace BionicProsthetics
 
         void OnCollisionEnter2D(Collision2D collision)
         {
-            if (Owner != null) Owner.OnPartContact(collision.collider);
+            if (Owner != null) Owner.OnPartContact(collision.collider, collision.relativeVelocity.magnitude);
         }
 
         void OnCollisionStay2D(Collision2D collision)
         {
-            if (Owner != null) Owner.OnPartContact(collision.collider);
+            if (Owner != null) Owner.OnPartContact(collision.collider, 0f);
         }
 
         // Activating the forearm / shin itself (F) triggers the prosthetic's ability.
