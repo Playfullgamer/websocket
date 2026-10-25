@@ -12,7 +12,11 @@ namespace Mod
         public static void Main()
         {
             Res.Load();
-            category = FindCategory("Misc.") ?? FindCategory("Entities");
+            category = CreateCategory("Prosthetics", "Replacement limbs for anyone who's lost one - from peg legs to plasma cannons.",
+                ModAPI.LoadSprite("category.png"));
+            if (category == null) category = FindCategory("Misc.") ?? FindCategory("Entities");
+            Sprite medicalForearm = ModAPI.LoadSprite("sprites/medical_arm_lower.png");
+            Sprite cyberForearm = ModAPI.LoadSprite("sprites/cyber_arm_lower.png");
 
             // ---------------------------------------------------------------- legs
             Add("Pirate Peg Leg", "peg_leg", ProstheticSlot.LowerLeg, SpriteData.PegLegAttach, SpriteData.PegLegTip, "Wood",
@@ -75,16 +79,17 @@ namespace Mod
                 "Activate to clamp onto whatever it touches, and again to release.",
                 p => { p.gameObject.AddComponent<Grabber>().ClosedSprite = Res.ClawClosed; });
 
-            Add("Medical Prosthetic Arm", "medical_arm", ProstheticSlot.FullArm, SpriteData.MedicalArmAttach, SpriteData.MedicalArmTip, "Plastic",
-                "A myoelectric arm with an articulated hand that mirrors the wearer's other arm. " +
+            Add("Medical Prosthetic Arm", "medical_arm_upper", "medical_arm", ProstheticSlot.FullArm, SpriteData.MedicalArmAttach, SpriteData.MedicalArmTip, "Plastic",
+                "A myoelectric arm with a working elbow and an articulated hand that mirrors the wearer's other arm. " +
                 "Touch it to the CHEST (upper body) of anyone missing an entire arm.",
-                null);
+                p => { p.BuildForearm(medicalForearm, SpriteData.MedicalArmElbow, SpriteData.MedicalArmLowerElbow, SpriteData.MedicalArmTip); });
 
-            Add("Cyber Arm MK-II", "cyber_arm", ProstheticSlot.FullArm, SpriteData.CyberArmAttach, SpriteData.CyberArmTip, "Metal",
-                "Chrome combat arm with a reactor shoulder. Touch it to the CHEST (upper body) of anyone missing an entire arm. " +
+            Add("Cyber Arm MK-II", "cyber_arm_upper", "cyber_arm", ProstheticSlot.FullArm, SpriteData.CyberArmAttach, SpriteData.CyberArmTip, "Metal",
+                "Chrome combat arm with a reactor shoulder and a powered elbow. Touch it to the CHEST (upper body) of anyone missing an entire arm. " +
                 "Activate for a rocket-powered punch.",
                 p =>
                 {
+                    p.BuildForearm(cyberForearm, SpriteData.CyberArmElbow, SpriteData.CyberArmLowerElbow, SpriteData.CyberArmTip);
                     p.gameObject.AddComponent<PowerPunch>();
                     p.gameObject.AddComponent<CoreGlow>().CorePixel = new Vector2(9f, 7f);
                 });
@@ -155,6 +160,34 @@ namespace Mod
                     }
                 }
             });
+        }
+
+        /// <summary>Adds our own tab to the spawn menu (or returns it if it already exists).</summary>
+        static Category CreateCategory(string name, string description, Sprite icon)
+        {
+            try
+            {
+                CatalogBehaviour catalog = UnityEngine.Object.FindObjectOfType<CatalogBehaviour>();
+                if (catalog == null) return null;
+                Category[] existing = catalog.Catalog.Categories;
+                foreach (Category c in existing)
+                {
+                    if (c != null && c.name == name) return c;
+                }
+                Category created = ScriptableObject.CreateInstance<Category>();
+                created.name = name;
+                created.Description = description;
+                created.Icon = icon;
+                Category[] grown = new Category[existing.Length + 1];
+                Array.Copy(existing, grown, existing.Length);
+                grown[existing.Length] = created;
+                catalog.Catalog.Categories = grown;
+                return created;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         static Category FindCategory(string name)

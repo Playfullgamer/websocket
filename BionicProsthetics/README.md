@@ -10,7 +10,7 @@ Most of them do something when you activate them.
 
 Copy this whole `BionicProsthetics` folder into your People Playground `Mods` folder
 (`<Steam>/steamapps/common/People Playground/Mods/`), start the game and turn the mod on.
-The prosthetics are in the **Misc.** category.
+The prosthetics get their own **Prosthetics** tab in the spawn menu (if the game ever refuses the custom tab, they fall back to **Misc.**).
 
 ## How to fit one
 
@@ -32,6 +32,9 @@ collide with it. If you touch the wrong body part of someone it would fit, a hin
 * Right-click → **Detach prosthetic** to take it off.
 * Prosthetic arms copy whatever the healthy arm is doing. Prosthetic legs stay straight and
   hold enough torque to bear the wearer's weight.
+* **Full arms have two joints** (shoulder and elbow), so they bend like a real arm. When worn,
+  both joints copy the healthy arm. If there isn't a healthy arm, the arm hangs naturally with a
+  slight bend. Lying loose on the floor, the forearm flops freely and only bends the way a real elbow does.
 
 ## The prosthetics
 
@@ -45,8 +48,8 @@ collide with it. If you touch the wrong body part of someone it would fit, a hin
 | ![](thumbs/rocket_leg.png) | Rocket Leg | full leg | toggle thruster (with flame, smoke and a light) |
 | ![](thumbs/hook.png) | Pirate Hook | forearm | hook onto objects *or walls* to hang from them; activate again to let go |
 | ![](thumbs/claw.png) | Hydraulic Claw | forearm | clamp onto things (open/closed animation) |
-| ![](thumbs/medical_arm.png) | Medical Prosthetic Arm | full arm | — (myoelectric arm, robotic hand) |
-| ![](thumbs/cyber_arm.png) | Cyber Arm MK-II | full arm | rocket-powered punch that sends people flying and can break bones |
+| ![](thumbs/medical_arm.png) | Medical Prosthetic Arm | full arm | — (jointed elbow, robotic hand) |
+| ![](thumbs/cyber_arm.png) | Cyber Arm MK-II | full arm | powered elbow; rocket punch that sends people flying and can break bones |
 | ![](thumbs/plasma_cannon.png) | Plasma Arm Cannon | forearm | fires glowing plasma bolts |
 | ![](thumbs/drill_arm.png) | Drill Arm | forearm | toggle a spinning drill (animated, sparks, grinds and shoves) |
 | ![](thumbs/flashlight_hand.png) | Flashlight Hand | forearm | toggle a light with a visible beam |
@@ -57,11 +60,12 @@ collide with it. If you touch the wrong body part of someone it would fit, a hin
 ```
 mod.json                 mod manifest
 Main.cs                  registers the 14 items
-ProstheticBehaviour.cs   stump detection, fitting, sizing, servo joint, detaching
+ProstheticBehaviour.cs   stump detection, fitting, sizing, servo joints, jointed forearms, detaching
 Abilities.cs             activation abilities (jump, grab, cannon, punch, drill, rocket, light, bling)
 FX.cs                    asset loading + lightweight particle/shockwave/blast helpers
 SpriteData.cs            socket/tip pixel coordinates (generated)
-sprites/ thumbs/ fx/     pixel art
+sprites/ thumbs/ fx/     pixel art (full arms are split into _upper / _lower pieces)
+category.png             spawn-menu tab icon
 sfx/                     sound effects
 ```
 

@@ -275,7 +275,7 @@ namespace BionicProsthetics
         IEnumerator Punch()
         {
             P.Play(Res.Punch);
-            P.Body.velocity += P.AxisDown * 10f;
+            P.TipBody.velocity += P.AxisDown * 10f;
             yield return new WaitForSeconds(0.07f);
             float L = P.WorldLength;
             Vector2 fist = P.TipWorld + P.AxisDown * L * 0.1f;

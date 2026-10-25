@@ -33,12 +33,27 @@ namespace BionicProsthetics
         public string ReplacedLimb { get; private set; }
         public Rigidbody2D Body { get; private set; }
         public SpriteRenderer Renderer { get; private set; }
+        /// <summary>Two-piece arms only: the separate forearm hinged at the elbow.</summary>
+        public Rigidbody2D ForearmBody { get; private set; }
+        public SpriteRenderer ForearmRenderer { get; private set; }
+        /// <summary>The body that carries the tip: the forearm on two-piece arms, otherwise this one.</summary>
+        public Rigidbody2D TipBody { get { return ForearmBody != null ? ForearmBody : Body; } }
 
         HingeJoint2D joint;
         HingeJoint2D mimicJoint;
         bool mimicInverted;
         float motorTorque;
-        float motorSignVotes;
+        readonly Servo shoulderServo = new Servo();
+
+        GameObject forearm;
+        HingeJoint2D elbow;
+        Vector2 elbowPixel;
+        Vector2 forearmElbowPixel;
+        HingeJoint2D elbowMimic;
+        bool elbowMimicInverted;
+        float elbowTorque;
+        float elbowConventionVotes;
+        readonly Servo elbowServo = new Servo();
         float nextAttachTime;
         float nextProbeTime;
         float lastContactTime = -10f;
@@ -78,15 +93,26 @@ namespace BionicProsthetics
 
         public Vector2 PixelToLocal(Vector2 px)
         {
-            Sprite s = Renderer.sprite;
+            return PixelToLocal(Renderer.sprite, px);
+        }
+
+        static Vector2 PixelToLocal(Sprite s, Vector2 px)
+        {
             float ppu = s.pixelsPerUnit;
             return new Vector2((px.x + 0.5f - s.pivot.x) / ppu, (s.rect.height - px.y - 0.5f - s.pivot.y) / ppu);
         }
 
         public Vector2 AttachWorld { get { return transform.TransformPoint(PixelToLocal(AttachPixel)); } }
-        public Vector2 TipWorld { get { return transform.TransformPoint(PixelToLocal(TipPixel)); } }
-        /// <summary>World direction pointing from the socket towards the extremity.</summary>
-        public Vector2 AxisDown { get { return -(Vector2)transform.up; } }
+        public Vector2 TipWorld
+        {
+            get
+            {
+                if (forearm != null) return forearm.transform.TransformPoint(PixelToLocal(ForearmRenderer.sprite, TipPixel));
+                return transform.TransformPoint(PixelToLocal(TipPixel));
+            }
+        }
+        /// <summary>World direction pointing from the socket (or elbow) towards the extremity.</summary>
+        public Vector2 AxisDown { get { return -(Vector2)(forearm != null ? forearm.transform.up : transform.up); } }
         /// <summary>World length from socket to tip; a handy size reference for effects.</summary>
         public float WorldLength { get { return Mathf.Max(0.05f, Vector2.Distance(AttachWorld, TipWorld)); } }
         public int CollisionMask { get { return Physics2D.GetLayerCollisionMask(gameObject.layer); } }
@@ -98,9 +124,15 @@ namespace BionicProsthetics
         {
             if (col == null) return false;
             if (col.attachedRigidbody == Body || col.transform.IsChildOf(transform)) return true;
+            if (ForearmBody != null && col.attachedRigidbody == ForearmBody) return true;
             if (Wearer == null) return false;
             if (col.transform.IsChildOf(Wearer.transform)) return true;
             ProstheticBehaviour other = col.GetComponentInParent<ProstheticBehaviour>();
+            if (other == null && col.attachedRigidbody != null)
+            {
+                ForearmLink link = col.attachedRigidbody.GetComponent<ForearmLink>();
+                if (link != null) other = link.Owner;
+            }
             return other != null && other.Wearer == Wearer;
         }
 
@@ -109,11 +141,14 @@ namespace BionicProsthetics
         {
             List<Rigidbody2D> list = new List<Rigidbody2D>();
             list.Add(Body);
+            if (ForearmBody != null) list.Add(ForearmBody);
             if (Wearer == null) return list;
             list.AddRange(Wearer.GetComponentsInChildren<Rigidbody2D>());
             foreach (ProstheticBehaviour p in FindObjectsOfType<ProstheticBehaviour>())
             {
-                if (p != this && p.Wearer == Wearer && p.Body != null) list.Add(p.Body);
+                if (p == this || p.Wearer != Wearer) continue;
+                if (p.Body != null) list.Add(p.Body);
+                if (p.ForearmBody != null) list.Add(p.ForearmBody);
             }
             return list;
         }
@@ -169,10 +204,16 @@ namespace BionicProsthetics
 
         void OnCollisionStay2D(Collision2D collision)
         {
+            OnPartContact(collision.collider);
+        }
+
+        /// <summary>Contact on any part of the prosthetic (the forearm reports through here too).</summary>
+        public void OnPartContact(Collider2D other)
+        {
             lastContactTime = Time.time;
             if (Time.time < nextProbeTime) return;
             nextProbeTime = Time.time + 0.15f;
-            Consider(collision.collider);
+            Consider(other);
         }
 
         void Consider(Collider2D col)
@@ -382,7 +423,13 @@ namespace BionicProsthetics
 
             // Resize uniformly so the prosthetic is as long as the limb it replaces.
             Vector2 attachLocal = PixelToLocal(AttachPixel);
-            float ownLength = Mathf.Max(0.01f, attachLocal.y - Renderer.sprite.bounds.min.y);
+            float ownLength = attachLocal.y - Renderer.sprite.bounds.min.y;
+            if (forearm != null)
+            {
+                ownLength = attachLocal.y - PixelToLocal(elbowPixel).y
+                    + PixelToLocal(ForearmRenderer.sprite, forearmElbowPixel).y - ForearmRenderer.sprite.bounds.min.y;
+            }
+            ownLength = Mathf.Max(0.01f, ownLength);
             float expected = ExpectedLength(limbs, anchor, twin, twinSide);
             float scale = expected > 0.01f ? Mathf.Clamp(expected / ownLength, 0.02f, 50f) : Mathf.Abs(transform.localScale.y);
             float facing = Mathf.Sign(anchor.transform.lossyScale.x);
@@ -398,10 +445,23 @@ namespace BionicProsthetics
             Body.angularVelocity = anchorRb.angularVelocity;
 
             Rigidbody2D twinRb = twin != null ? twin.GetComponent<Rigidbody2D>() : null;
-            Body.mass = twinRb != null ? twinRb.mass * (IsFull ? 1.8f : 1f) : Mathf.Max(0.3f, anchorRb.mass * (IsFull ? 1.2f : 0.8f));
+            LimbBehaviour twinLower = forearm != null && twin != null ? Get(limbs, "LowerArm" + twinSide) : null;
+            Rigidbody2D twinLowerRb = twinLower != null ? twinLower.GetComponent<Rigidbody2D>() : null;
+            if (forearm != null)
+            {
+                // Two-piece arm: each half weighs what the real half would.
+                Body.mass = twinRb != null ? twinRb.mass : Mathf.Max(0.3f, anchorRb.mass * 0.6f);
+                ForearmBody.mass = twinLowerRb != null ? twinLowerRb.mass : Body.mass * 0.8f;
+                PlaceForearm();
+                elbowMimic = twinLowerRb != null ? FindHinge(twinLowerRb, twinRb, out elbowMimicInverted) : null;
+            }
+            else
+            {
+                Body.mass = twinRb != null ? twinRb.mass * (IsFull ? 1.8f : 1f) : Mathf.Max(0.3f, anchorRb.mass * (IsFull ? 1.2f : 0.8f));
+            }
 
             // Don't fight the wearer's own body.
-            foreach (Collider2D mine in GetComponents<Collider2D>())
+            foreach (Collider2D mine in OwnColliders())
             {
                 foreach (Collider2D theirs in person.GetComponentsInChildren<Collider2D>())
                 {
@@ -446,8 +506,11 @@ namespace BionicProsthetics
             float wearerMass = 0f;
             foreach (Rigidbody2D rb in person.GetComponentsInChildren<Rigidbody2D>()) wearerMass += rb.mass;
             float gravity = Mathf.Max(1f, Physics2D.gravity.magnitude);
-            motorTorque = IsArm ? Body.mass * gravity * expected * 6f : wearerMass * gravity * expected * 1.2f;
+            float armMass = Body.mass + (ForearmBody != null ? ForearmBody.mass : 0f);
+            motorTorque = IsArm ? armMass * gravity * expected * 6f : wearerMass * gravity * expected * 1.2f;
             joint.useMotor = !LockJoint;
+            shoulderServo.ResetSample();
+            if (ForearmBody != null) elbowTorque = ForearmBody.mass * gravity * expected * 0.5f * 6f;
 
             Anchor = anchor;
             Wearer = person;
@@ -475,6 +538,7 @@ namespace BionicProsthetics
         public void Detach(bool announce)
         {
             if (joint == null) return;
+            joint.enabled = false; // Destroy is deferred; stop it acting right now.
             Destroy(joint);
             joint = null;
             foreach (KeyValuePair<Collider2D, Collider2D> pair in ignoredPairs)
@@ -487,6 +551,7 @@ namespace BionicProsthetics
             Wearer = null;
             ReplacedLimb = null;
             mimicJoint = null;
+            elbowMimic = null;
             nextAttachTime = Time.time + 1.5f;
             if (announce) Play(Res.Detach);
             SendMessage("OnProstheticDetached", SendMessageOptions.DontRequireReceiver);
@@ -509,6 +574,12 @@ namespace BionicProsthetics
 
         void FixedUpdate()
         {
+            // Arm flipped, resized or teleported by the game: re-hang the forearm to match.
+            if (forearm != null && (Mathf.Sign(forearm.transform.localScale.x) != Mathf.Sign(transform.localScale.x)
+                || !Mathf.Approximately(forearm.transform.localScale.y, transform.localScale.y) || ElbowPulledApart()))
+                PlaceForearm();
+            UpdateElbow();
+
             if (joint == null) return;
             // The stump itself was destroyed or the joint lost its body: fall off instead of pinning to the world.
             if (Anchor == null || joint.connectedBody == null)
@@ -521,29 +592,215 @@ namespace BionicProsthetics
                 Reseat();
                 return;
             }
+            shoulderServo.Sample(joint);
             if (!joint.useMotor) return;
 
             float target = 0f;
             if (mimicJoint != null && mimicJoint.enabled && mimicJoint.connectedBody != null)
                 target = mimicInverted ? -mimicJoint.jointAngle : mimicJoint.jointAngle;
-            if (joint.useLimits) target = Mathf.Clamp(target, joint.limits.min, joint.limits.max);
-            JointMotor2D motor = joint.motor;
-            // Learn whether motor speed and joint angle share a sign convention by watching the
-            // joint respond, so the servo never pushes the wrong way.
-            if (Mathf.Abs(motor.motorSpeed) > 30f && Mathf.Abs(joint.jointSpeed) > 15f)
-                motorSignVotes = Mathf.Clamp(motorSignVotes + Mathf.Sign(motor.motorSpeed * joint.jointSpeed), -10f, 10f);
-            float motorSign = motorSignVotes >= 0f ? 1f : -1f;
-            motor.motorSpeed = motorSign * Mathf.Clamp((target - joint.jointAngle) * 12f, -720f, 720f);
-            motor.maxMotorTorque = motorTorque;
-            joint.motor = motor;
+            shoulderServo.Drive(joint, target, motorTorque);
+        }
+
+        // ------------------------------------------------------------ two-piece arms
+
+        /// <summary>
+        /// Splits this prosthetic into an upper arm (this object) and a forearm hinged at the elbow.
+        /// Pixel coordinates: elbow on this sprite, elbow and tip on the forearm sprite.
+        /// </summary>
+        public void BuildForearm(Sprite sprite, Vector2 elbowOnUpper, Vector2 elbowOnForearm, Vector2 tipOnForearm)
+        {
+            if (forearm != null) Destroy(forearm);
+            elbowPixel = elbowOnUpper;
+            forearmElbowPixel = elbowOnForearm;
+            TipPixel = tipOnForearm;
+
+            forearm = new GameObject(DisplayName + " Forearm");
+            forearm.layer = gameObject.layer;
+            ForearmRenderer = forearm.AddComponent<SpriteRenderer>();
+            ForearmRenderer.sprite = sprite;
+            ForearmRenderer.sharedMaterial = Renderer.sharedMaterial;
+            RegisterOverlay(ForearmRenderer, 1); // drawn over the upper arm so the hinge cap covers the seam
+
+            ForearmBody = forearm.AddComponent<Rigidbody2D>();
+            ForearmBody.mass = Body.mass * 0.6f;
+            ForearmBody.gravityScale = Body.gravityScale;
+            ForearmBody.drag = Body.drag;
+            ForearmBody.angularDrag = Body.angularDrag;
+            ForearmBody.interpolation = Body.interpolation;
+            ForearmBody.collisionDetectionMode = Body.collisionDetectionMode;
+            PolygonCollider2D shape = forearm.AddComponent<PolygonCollider2D>();
+            Collider2D mainShape = GetComponent<Collider2D>();
+            if (mainShape != null) shape.sharedMaterial = mainShape.sharedMaterial;
+            forearm.AddComponent<ForearmLink>().Owner = this;
+            PlaceForearm();
+        }
+
+        IEnumerable<Collider2D> OwnColliders()
+        {
+            foreach (Collider2D c in GetComponents<Collider2D>()) yield return c;
+            if (forearm != null)
+                foreach (Collider2D c in forearm.GetComponents<Collider2D>()) yield return c;
+        }
+
+        /// <summary>Hangs the forearm straight down from the elbow and (re)creates the elbow hinge.</summary>
+        void PlaceForearm()
+        {
+            if (forearm == null) return;
+            if (elbow != null)
+            {
+                elbow.enabled = false;
+                Destroy(elbow);
+            }
+            Transform t = forearm.transform;
+            t.localScale = transform.localScale;
+            t.rotation = transform.rotation;
+            Vector2 elbowWorld = transform.TransformPoint(PixelToLocal(elbowPixel));
+            Vector2 forearmLocal = PixelToLocal(ForearmRenderer.sprite, forearmElbowPixel);
+            t.position = new Vector3(t.position.x, t.position.y, transform.position.z);
+            Vector2 offset = elbowWorld - (Vector2)t.TransformPoint(forearmLocal);
+            t.position += new Vector3(offset.x, offset.y, 0f);
+            Physics2D.SyncTransforms();
+            ForearmBody.velocity = Body.GetPointVelocity(elbowWorld);
+            ForearmBody.angularVelocity = Body.angularVelocity;
+
+            elbow = forearm.AddComponent<HingeJoint2D>();
+            elbow.autoConfigureConnectedAnchor = false;
+            elbow.enableCollision = false;
+            elbow.connectedBody = Body;
+            elbow.anchor = forearmLocal;
+            elbow.connectedAnchor = PixelToLocal(elbowPixel);
+            elbow.breakForce = Mathf.Infinity;
+            elbow.breakTorque = Mathf.Infinity;
+            elbow.useLimits = true;
+            JointAngleLimits2D loose = new JointAngleLimits2D();
+            loose.min = -100f;
+            loose.max = 100f;
+            elbow.limits = loose;
+            elbowServo.ResetSample();
+        }
+
+        bool ElbowPulledApart()
+        {
+            Vector2 onUpper = transform.TransformPoint(PixelToLocal(elbowPixel));
+            Vector2 onForearm = forearm.transform.TransformPoint(PixelToLocal(ForearmRenderer.sprite, forearmElbowPixel));
+            float upperLength = Vector2.Distance(AttachWorld, onUpper);
+            return Vector2.Distance(onUpper, onForearm) > Mathf.Max(0.05f, upperLength * 0.5f);
+        }
+
+        /// <summary>Joint-angle value that bends the forearm forward (towards the wearer's front) by some degrees.</summary>
+        float ForwardBend(float degrees)
+        {
+            // Forward is counter-clockwise when facing right, clockwise when facing left; the learned
+            // convention maps that rotation onto the hinge's own angle sign.
+            float convention = elbowConventionVotes >= 0f ? 1f : -1f;
+            return degrees * Mathf.Sign(transform.localScale.x) * convention;
+        }
+
+        void UpdateElbow()
+        {
+            if (elbow == null || ForearmBody == null) return;
+            elbowServo.Sample(elbow);
+            // Learn how the hinge's angle relates to the forearm actually turning counter-clockwise.
+            float relativeSpin = ForearmBody.angularVelocity - Body.angularVelocity;
+            if (Mathf.Abs(relativeSpin) > 20f && Mathf.Abs(elbowServo.Rate) > 10f)
+                elbowConventionVotes = Mathf.Clamp(elbowConventionVotes + Mathf.Sign(relativeSpin * elbowServo.Rate), -10f, 10f);
+
+            bool mimicking = Attached && elbowMimic != null && elbowMimic.enabled && elbowMimic.connectedBody != null;
+            // Elbows only bend one way: copy the healthy elbow's range, or bend forward once we know which way that is.
+            JointAngleLimits2D limits = elbow.limits;
+            if (mimicking && elbowMimic.useLimits)
+            {
+                limits.min = elbowMimicInverted ? -elbowMimic.limits.max : elbowMimic.limits.min;
+                limits.max = elbowMimicInverted ? -elbowMimic.limits.min : elbowMimic.limits.max;
+            }
+            else if (Mathf.Abs(elbowConventionVotes) >= 3f)
+            {
+                float a = ForwardBend(-10f), b = ForwardBend(145f);
+                limits.min = Mathf.Min(a, b);
+                limits.max = Mathf.Max(a, b);
+            }
+            if (!Mathf.Approximately(limits.min, elbow.limits.min) || !Mathf.Approximately(limits.max, elbow.limits.max))
+                elbow.limits = limits;
+
+            // Loose on the floor the forearm flops freely; worn, it follows the healthy elbow or rests slightly bent.
+            if (!Attached)
+            {
+                elbow.useMotor = false;
+                return;
+            }
+            float target = mimicking
+                ? (elbowMimicInverted ? -elbowMimic.jointAngle : elbowMimic.jointAngle)
+                : ForwardBend(15f);
+            elbowServo.Drive(elbow, target, elbowTorque);
         }
 
         void OnDestroy()
         {
+            if (forearm != null) Destroy(forearm);
             foreach (KeyValuePair<Collider2D, Collider2D> pair in ignoredPairs)
             {
                 if (pair.Key != null && pair.Value != null) Physics2D.IgnoreCollision(pair.Key, pair.Value, false);
             }
+        }
+    }
+
+    /// <summary>
+    /// Drives a hinge's motor towards a target angle. It learns from the joint's own response which
+    /// way the motor turns it, so it never depends on Unity's sign conventions.
+    /// </summary>
+    class Servo
+    {
+        public float Rate;
+        float votes;
+        float lastAngle;
+        bool hasLast;
+
+        public void ResetSample()
+        {
+            hasLast = false;
+            Rate = 0f;
+        }
+
+        public void Sample(HingeJoint2D j)
+        {
+            float a = j.jointAngle;
+            Rate = hasLast ? (a - lastAngle) / Time.fixedDeltaTime : 0f;
+            lastAngle = a;
+            hasLast = true;
+        }
+
+        public void Drive(HingeJoint2D j, float target, float torque)
+        {
+            if (j.useLimits) target = Mathf.Clamp(target, j.limits.min, j.limits.max);
+            JointMotor2D motor = j.motor;
+            if (j.useMotor && Mathf.Abs(motor.motorSpeed) > 30f && Mathf.Abs(Rate) > 15f)
+                votes = Mathf.Clamp(votes + Mathf.Sign(motor.motorSpeed * Rate), -10f, 10f);
+            float sign = votes >= 0f ? 1f : -1f;
+            motor.motorSpeed = sign * Mathf.Clamp((target - j.jointAngle) * 12f, -720f, 720f);
+            motor.maxMotorTorque = torque;
+            j.motor = motor;
+            j.useMotor = true;
+        }
+    }
+
+    /// <summary>Lives on a two-piece arm's forearm: reports its contacts and dies with its upper arm.</summary>
+    public class ForearmLink : MonoBehaviour
+    {
+        public ProstheticBehaviour Owner;
+
+        void OnCollisionEnter2D(Collision2D collision)
+        {
+            if (Owner != null) Owner.OnPartContact(collision.collider);
+        }
+
+        void OnCollisionStay2D(Collision2D collision)
+        {
+            if (Owner != null) Owner.OnPartContact(collision.collider);
+        }
+
+        void Update()
+        {
+            if (Owner == null) Destroy(gameObject);
         }
     }
 }
