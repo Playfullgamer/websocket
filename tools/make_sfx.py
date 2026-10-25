@@ -1,176 +1,140 @@
 #!/usr/bin/env python3
-"""Synthesises every sound effect for the Bionic Prosthetics mod (no samples needed).
+"""Builds every sound effect for the Bionic Prosthetics mod from open, CC0 sound libraries.
 
 Run from the repository root:  python3 tools/make_sfx.py
+Needs git, curl, ffmpeg and numpy. Sources are downloaded into a cache folder on first run.
+
+Sources (all CC0 1.0 / public domain - see BionicProsthetics/sfx/CREDITS.md):
+  * Kenney starter kits (https://github.com/KenneyNL) - FPS, 3D Platformer, Racing, City Builder
+  * uisfx (https://github.com/romainsimon/uisfx, npm package "uisfx") - "mechanical" sound set
+
+Each mod sound is one recording, or a short mix of two, trimmed, pitched, normalised and saved as
+22.05 kHz mono 16-bit WAV (the format People Playground's ModAPI.LoadSound loads most reliably).
 """
 import os
+import subprocess
+import tarfile
+import tempfile
 import wave
 
 import numpy as np
 
 RATE = 22050
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "BionicProsthetics", "sfx")
-rng = np.random.default_rng(7)
+CACHE = os.path.join(tempfile.gettempdir(), "bionic-prosthetics-sfx-sources")
+
+KENNEY_KITS = {
+    "fps": "starter-kit-fps",
+    "platformer": "starter-kit-3d-platformer",
+    "racing": "starter-kit-racing",
+    "city": "starter-kit-city-builder",
+}
+UISFX_VERSION = "0.4.0"
+
+# name -> (layers, options). A layer is (source, path, settings); source is a Kenney kit key or "uisfx".
+# Layer settings: pitch (1 = original, >1 higher/faster), gain, trim (seconds kept), delay (seconds).
+SOUNDS = {
+    "attach.wav": ([("uisfx", "mechanical/connect.ogg", {})], {}),
+    "detach.wav": ([("uisfx", "mechanical/disconnect.ogg", {})], {}),
+    "plasma_fire.wav": ([("fps", "sounds/blaster.ogg", {"trim": 0.6})], {"fade": 0.25}),
+    "plasma_hit.wav": ([("fps", "sounds/enemy_destroy.ogg", {})], {}),
+    "punch.wav": ([("racing", "audio/impact.ogg", {})], {}),
+    "boing.wav": ([("platformer", "sounds/jump.ogg", {"pitch": 0.85})], {}),
+    "spring.wav": ([("fps", "sounds/jump_a.ogg", {})], {}),
+    "leap.wav": ([("fps", "sounds/jump_c.ogg", {}),
+                  ("platformer", "sounds/break.ogg", {"delay": 0.12, "pitch": 0.8})], {}),
+    "grab.wav": ([("uisfx", "mechanical/lock.ogg", {})], {}),
+    "release.wav": ([("uisfx", "mechanical/release.ogg", {})], {}),
+    "click.wav": ([("uisfx", "mechanical/toggle-on.ogg", {})], {"peak": 0.5}),
+    "bling.wav": ([("platformer", "sounds/coin.ogg", {}),
+                   ("platformer", "sounds/coin.ogg", {"delay": 0.11, "pitch": 1.26, "gain": 0.7})], {"peak": 0.5}),
+    "drill_loop.wav": ([("racing", "audio/engine-motorcycle.ogg", {"pitch": 1.8, "trim": 3.0})], {"loop": True, "peak": 0.55}),
+    "rocket_loop.wav": ([("racing", "audio/engine.ogg", {"pitch": 0.6, "trim": 3.0}),
+                         ("racing", "audio/skid.ogg", {"pitch": 0.55, "trim": 3.0, "gain": 0.8})], {"loop": True, "peak": 0.6}),
+    "rocket_ignite.wav": ([("fps", "sounds/enemy_destroy.ogg", {"pitch": 0.75, "trim": 0.9})], {"fade": 0.3}),
+    "steam.wav": ([("racing", "audio/skid.ogg", {"pitch": 1.2, "trim": 0.9})], {"fade": 0.45, "peak": 0.6}),
+    "zap.wav": ([("fps", "sounds/enemy_attack.ogg", {})], {"peak": 0.6}),
+    "impale.wav": ([("city", "sounds/placement-c.ogg", {"pitch": 0.8}),
+                    ("fps", "sounds/enemy_hurt.ogg", {"delay": 0.02})], {"peak": 0.65}),
+}
 
 
-def t_axis(sec):
-    return np.arange(int(RATE * sec)) / RATE
+def fetch_sources():
+    os.makedirs(CACHE, exist_ok=True)
+    roots = {}
+    for key, repo in KENNEY_KITS.items():
+        path = os.path.join(CACHE, repo)
+        if not os.path.isdir(os.path.join(path, ".git")):
+            subprocess.run(["git", "clone", "-q", "--depth", "1", "https://github.com/KenneyNL/" + repo, path],
+                           check=True, env=dict(os.environ, GIT_LFS_SKIP_SMUDGE="1"))
+        roots[key] = path
+    uisfx = os.path.join(CACHE, "uisfx")
+    if not os.path.isdir(os.path.join(uisfx, "package", "sounds")):
+        os.makedirs(uisfx, exist_ok=True)
+        tgz = os.path.join(uisfx, "uisfx.tgz")
+        subprocess.run(["curl", "-sSfL", "-o", tgz,
+                        "https://registry.npmjs.org/uisfx/-/uisfx-%s.tgz" % UISFX_VERSION], check=True)
+        with tarfile.open(tgz) as t:
+            members = [m for m in t.getmembers() if m.name.startswith("package/") and ".." not in m.name]
+            try:
+                t.extractall(uisfx, members=members, filter="data")
+            except TypeError:  # Python older than 3.12: no extraction filters
+                t.extractall(uisfx, members=members)
+    roots["uisfx"] = os.path.join(uisfx, "package", "sounds")
+    return roots
 
 
-def env(sec, attack=0.005, decay=8.0):
-    t = t_axis(sec)
-    a = np.clip(t / max(attack, 1e-4), 0, 1)
-    return a * np.exp(-t * decay)
+def decode(path):
+    raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", path, "-f", "s16le", "-ac", "1", "-ar", str(RATE), "-"],
+                         check=True, capture_output=True).stdout
+    return np.frombuffer(raw, dtype="<i2").astype(float) / 32768.0
 
 
-def noise(sec):
-    return rng.uniform(-1, 1, int(RATE * sec))
+def repitch(x, factor):
+    """Resample so it plays `factor` times faster (and higher)."""
+    if factor == 1:
+        return x
+    n = max(1, int(len(x) / factor))
+    return np.interp(np.linspace(0, len(x) - 1, n), np.arange(len(x)), x)
 
 
-def lowpass(x, cutoff):
-    a = np.exp(-2 * np.pi * cutoff / RATE)
-    y = np.zeros_like(x)
-    acc = 0.0
-    for i, v in enumerate(x):
-        acc = (1 - a) * v + a * acc
-        y[i] = acc
-    return y
+def layer(roots, source, path, settings):
+    x = repitch(decode(os.path.join(roots[source], path)), settings.get("pitch", 1.0))
+    if "trim" in settings:
+        x = x[: int(RATE * settings["trim"])]
+    x = x * settings.get("gain", 1.0)
+    return np.concatenate([np.zeros(int(RATE * settings.get("delay", 0.0))), x])
 
 
-def highpass(x, cutoff):
-    return x - lowpass(x, cutoff)
-
-
-def sweep(f0, f1, sec, shape=np.sin, curve=1.0):
-    t = t_axis(sec)
-    f = f0 + (f1 - f0) * (t / sec) ** curve
-    phase = 2 * np.pi * np.cumsum(f) / RATE
-    return shape(phase)
-
-
-def saw(phase):
-    return 2 * ((phase / (2 * np.pi)) % 1) - 1
-
-
-def square(phase):
-    return np.sign(np.sin(phase))
-
-
-def mix(*parts):
-    n = max(len(p) for p in parts)
-    out = np.zeros(n)
-    for p in parts:
-        out[: len(p)] += p
-    return out
-
-
-def pad(x, sec_before):
-    return np.concatenate([np.zeros(int(RATE * sec_before)), x])
-
-
-def save(name, x, peak=0.7, loop=False):
+def save(name, x, peak=0.7, loop=False, fade=0.0):
+    x = x.copy()
     if loop:  # crossfade the tail into the head so it loops seamlessly
-        n = int(RATE * 0.08)
-        fade = np.linspace(0, 1, n)
-        x = x.copy()
-        x[:n] = x[:n] * fade + x[-n:] * (1 - fade)
+        n = int(RATE * 0.12)
+        ramp = np.linspace(0, 1, n)
+        x[:n] = x[:n] * ramp + x[-n:] * (1 - ramp)
         x = x[:-n]
     else:
-        fade = min(len(x), int(RATE * 0.01))
-        x = x.copy()
-        x[-fade:] *= np.linspace(1, 0, fade)
+        tail = max(int(RATE * fade), int(RATE * 0.01))
+        tail = min(tail, len(x))
+        x[-tail:] *= np.linspace(1, 0, tail)
     x = x / (np.max(np.abs(x)) + 1e-9) * peak
-    data = (x * 32767).astype("<i2").tobytes()
     with wave.open(os.path.join(OUT, name), "wb") as w:
         w.setnchannels(1)
         w.setsampwidth(2)
         w.setframerate(RATE)
-        w.writeframes(data)
-
-
-def clunk(sec=0.18, freq=90):
-    """Heavy mechanical impact."""
-    body = np.sin(2 * np.pi * freq * t_axis(sec)) * env(sec, 0.001, 30)
-    click = highpass(noise(0.02), 2000) * env(0.02, 0.0005, 200)
-    return mix(body, click * 0.8, lowpass(noise(sec), 900) * env(sec, 0.001, 45) * 0.7)
-
-
-def servo(f0, f1, sec):
-    whine = sweep(f0, f1, sec, saw) * 0.35 + sweep(f0 * 2, f1 * 2, sec) * 0.2
-    gear = square(2 * np.pi * np.cumsum(np.full(int(RATE * sec), 55.0)) / RATE) * 0.12
-    e = np.minimum(1, np.minimum(t_axis(sec) / 0.03, (sec - t_axis(sec)) / 0.05))
-    return lowpass(whine + gear, 3500) * e
+        w.writeframes((x * 32767).astype("<i2").tobytes())
 
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-
-    # attach: servo spins up, then the socket locks with a clunk
-    save("attach.wav", mix(servo(300, 900, 0.22), pad(clunk(0.25, 80), 0.2), pad(clunk(0.12, 160) * 0.5, 0.29)))
-    # detach: release hiss + descending servo
-    hiss = highpass(noise(0.3), 3000) * env(0.3, 0.005, 9) * 0.5
-    save("detach.wav", mix(clunk(0.12, 120) * 0.6, pad(servo(800, 250, 0.25), 0.05), hiss))
-
-    # plasma shot: falling FM zap with a charged hum
-    t = t_axis(0.35)
-    zap = np.sin(2 * np.pi * np.cumsum(1400 * np.exp(-t * 9) + 180 + 120 * np.sin(2 * np.pi * 40 * t)) / RATE)
-    save("plasma_fire.wav", mix(zap * env(0.35, 0.002, 7), highpass(noise(0.08), 4000) * env(0.08, 0.001, 50) * 0.4))
-    # plasma impact: crackling burst with a deep thump
-    crackle = highpass(noise(0.45), 1500) * env(0.45, 0.001, 9) * (rng.uniform(0, 1, int(RATE * 0.45)) > 0.6)
-    save("plasma_hit.wav", mix(sweep(140, 40, 0.4) * env(0.4, 0.001, 9), crackle * 0.6,
-                               lowpass(noise(0.4), 1200) * env(0.4, 0.001, 10) * 0.6))
-
-    # power punch: whoosh into a huge bassy impact
-    whoosh = lowpass(highpass(noise(0.15), 600), 3000) * np.sin(np.linspace(0, np.pi, int(RATE * 0.15))) * 0.6
-    save("punch.wav", mix(whoosh, pad(clunk(0.4, 55), 0.12), pad(sweep(400, 60, 0.3) * env(0.3, 0.001, 14) * 0.6, 0.12)))
-
-    # boing: wobbling rising tone
-    t = t_axis(0.6)
-    f = 160 + 260 * (1 - np.exp(-t * 10)) + 40 * np.sin(2 * np.pi * 11 * t) * np.exp(-t * 3)
-    save("boing.wav", mix(np.sin(2 * np.pi * np.cumsum(f) / RATE) * env(0.6, 0.004, 4.5), clunk(0.1, 100) * 0.3))
-    # blade spring: quick springy twang + whoosh
-    t = t_axis(0.3)
-    twang = np.sin(2 * np.pi * np.cumsum(520 + 380 * np.exp(-t * 18)) / RATE) * env(0.3, 0.001, 12)
-    save("spring.wav", mix(twang, lowpass(highpass(noise(0.25), 800), 4000) * env(0.25, 0.05, 10) * 0.5))
-    # cyber leap: charge-up whine into a shockwave stomp
-    save("leap.wav", mix(sweep(200, 1600, 0.18, saw) * 0.25 * np.linspace(0.2, 1, int(RATE * 0.18)),
-                         pad(clunk(0.45, 50), 0.17), pad(sweep(900, 80, 0.35) * env(0.35, 0.001, 10) * 0.5, 0.17)))
-
-    # grab: hydraulic clamp, ringing metal
-    t = t_axis(0.5)
-    ring = sum(np.sin(2 * np.pi * f * t) * a for f, a in ((1230, 0.3), (1870, 0.2), (2950, 0.12))) * env(0.5, 0.001, 9)
-    save("grab.wav", mix(servo(600, 1100, 0.08), pad(clunk(0.15, 140), 0.07), pad(ring, 0.07)))
-    save("release.wav", mix(highpass(noise(0.2), 2500) * env(0.2, 0.002, 18) * 0.5, servo(1000, 500, 0.12)))
-
-    # loops: drill and rocket (1 second, seamless)
-    t = t_axis(1.08)
-    motor = saw(2 * np.pi * 120 * t) * 0.5 + saw(2 * np.pi * 241 * t) * 0.3 + np.sin(2 * np.pi * 60 * t) * 0.4
-    grind = highpass(noise(1.08), 1800) * (0.6 + 0.4 * np.sin(2 * np.pi * 30 * t)) * 0.35
-    save("drill_loop.wav", lowpass(motor, 4000) + grind, peak=0.55, loop=True)
-    roar = lowpass(noise(1.08), 500) * 1.6 + lowpass(highpass(noise(1.08), 900), 5000) * 0.6
-    save("rocket_loop.wav", roar * (0.85 + 0.15 * np.sin(2 * np.pi * 7 * t)), peak=0.6, loop=True)
-    save("rocket_ignite.wav", mix(lowpass(noise(0.4), 1500) * env(0.4, 0.002, 6), clunk(0.2, 70)))
-
-    # flashlight click and golden "cha-ching" sparkle
-    save("click.wav", mix(highpass(noise(0.015), 3000) * env(0.015, 0.0005, 300),
-                          pad(highpass(noise(0.012), 2500) * env(0.012, 0.0005, 300) * 0.7, 0.06)), peak=0.5)
-    t = t_axis(0.8)
-    bells = sum(np.sin(2 * np.pi * f * t) * np.exp(-t * d) for f, d in ((2093, 5), (2637, 6), (3136, 7), (4186, 8)))
-    # steam blast: valve clank into a long pressure-release hiss
-    hiss = lowpass(highpass(noise(0.9), 1200), 7000) * env(0.9, 0.01, 3.2)
-    save("steam.wav", mix(clunk(0.12, 110) * 0.5, pad(hiss, 0.03),
-                          pad(lowpass(noise(0.5), 400) * env(0.5, 0.005, 6) * 0.5, 0.03)), peak=0.6)
-    # tesla zap: crackling arcs with a mains-hum buzz
-    t = t_axis(0.5)
-    buzz = square(2 * np.pi * 120 * t) * 0.25 + saw(2 * np.pi * 240 * t) * 0.15
-    crack = highpass(noise(0.5), 2500) * (rng.uniform(0, 1, len(t)) > 0.75) * 0.9
-    save("zap.wav", mix((buzz + crack) * env(0.5, 0.001, 7), highpass(noise(0.03), 3000) * env(0.03, 0.0005, 120)), peak=0.6)
-    # impale: sharp metal stab into a wet, meaty thunk
-    stab = highpass(noise(0.03), 3500) * env(0.03, 0.0005, 150)
-    squelch = lowpass(noise(0.35), 900) * env(0.35, 0.004, 9) * (0.6 + 0.4 * np.sin(2 * np.pi * 23 * t_axis(0.35)))
-    save("impale.wav", mix(stab * 0.8, pad(clunk(0.22, 70), 0.01), pad(squelch * 0.9, 0.02),
-                           pad(sweep(320, 90, 0.18) * env(0.18, 0.002, 18) * 0.4, 0.01)), peak=0.65)
-    save("bling.wav", mix(clunk(0.08, 300) * 0.4, pad(bells * 0.5, 0.05), pad(bells * 0.35, 0.16)), peak=0.5)
+    roots = fetch_sources()
+    for name, (layers, options) in SOUNDS.items():
+        parts = [layer(roots, *spec) for spec in layers]
+        mix = np.zeros(max(len(p) for p in parts))
+        for p in parts:
+            mix[: len(p)] += p
+        save(name, mix, peak=options.get("peak", 0.7), loop=options.get("loop", False), fade=options.get("fade", 0.0))
+        print("%-18s %.2fs  from %s" % (name, len(mix) / RATE, " + ".join(s[0] + ":" + s[1] for s in layers)))
 
 
 if __name__ == "__main__":
