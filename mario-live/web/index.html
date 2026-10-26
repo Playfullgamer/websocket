@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ask Mario Live</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/static/vendor/three/three.module.min.js",
+        "three/addons/": "/static/vendor/three/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="stage"></div>
+
+  <header id="title">
+    <div class="logo">ASK MARIO!</div>
+    <div class="sub">Type a question in chat &bull; say <b class="green">LUIGI</b> to call Luigi</div>
+    <div id="vip-hint" class="vip-hint" hidden></div>
+  </header>
+
+  <section id="question" class="card">
+    <div class="card-head">
+      <span id="q-vip" class="vip-badge" hidden>&#11088; VIP</span>
+      <span id="q-user" class="user"></span>
+      <span id="q-to" class="to"></span>
+    </div>
+    <div id="q-text" class="q-text"></div>
+  </section>
+
+  <div id="bubble">
+    <div id="bubble-name"></div>
+    <div id="bubble-text"></div>
+    <div class="dots"><i></i><i></i><i></i></div>
+  </div>
+
+  <aside id="supporters" hidden>
+    <div class="sup-title">&#127801; Top supporters</div>
+    <ol id="supporters-list"></ol>
+  </aside>
+
+  <div id="toasts"></div>
+
+  <footer id="bottom">
+    <div id="likegoal" hidden>
+      <div id="likegoal-fill"></div>
+      <div id="likegoal-text"></div>
+    </div>
+    <div id="queue">Ask Mario anything!</div>
+  </footer>
+
+  <div id="ai-warn" hidden></div>
+  <div id="offline" hidden>Reconnecting to Mario Live... is START.bat still running?</div>
+  <div id="unlock" hidden>&#128264; Click anywhere to turn on Mario's voice</div>
+  <div id="loading">Loading the Mushroom Kingdom...</div>
+
+  <div id="debug" hidden>
+    <div id="debug-status">connecting...</div>
+    <form id="debug-form">
+      <input id="debug-input" placeholder="Test question (try: Luigi, are you scared of ghosts?)" autocomplete="off">
+      <button>Ask</button>
+    </form>
+    <button id="debug-hearts" type="button">Test likes</button>
+    <button id="debug-gift" type="button">Test gift</button>
+    <small>Press D to hide this panel before going live.</small>
+  </div>
+
+  <script type="module" src="/static/js/main.js"></script>
+</body>
+</html>
