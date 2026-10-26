@@ -1,0 +1,24 @@
+{
+	"schemaVersion": 1,
+	"id": "thunderforge",
+	"version": "${version}",
+	"name": "Thunderforge",
+	"description": "Forge the Storm Hammer: leap into the sky, meteor-dive into a shockwave slam, chain lightning between your foes and call down a storm.",
+	"authors": [
+		"playfullgamer"
+	],
+	"license": "MIT",
+	"icon": "assets/thunderforge/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"dev.thunderforge.Thunderforge"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

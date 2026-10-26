@@ -1,0 +1,7 @@
+{
+	"item.thunderforge.storm_hammer": "Storm Hammer",
+	"item.thunderforge.storm_hammer.tooltip.leap": "Use: Thunder Leap — launch into the sky, slam down on landing",
+	"item.thunderforge.storm_hammer.tooltip.dive": "Sneak mid-leap: Meteor Dive — a far bigger shockwave",
+	"item.thunderforge.storm_hammer.tooltip.chain": "Full-strength hits: Chain Lightning arcs between foes",
+	"item.thunderforge.storm_hammer.tooltip.storm": "Sneak + Use: Call the Storm on every hostile nearby"
+}

@@ -1,0 +1,19 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"category": "equipment",
+	"pattern": [
+		"BNB",
+		"BLB",
+		" R "
+	],
+	"key": {
+		"B": "minecraft:iron_block",
+		"N": "minecraft:nether_star",
+		"L": "minecraft:lightning_rod",
+		"R": "minecraft:breeze_rod"
+	},
+	"result": {
+		"id": "thunderforge:storm_hammer",
+		"count": 1
+	}
+}
