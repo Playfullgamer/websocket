@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import {
   toon, part, canvasTexture, questionBlockTexture, brickTexture, grassTexture, dirtTexture, pipeTexture,
 } from './toon.js';
+import { addScenery } from './scenery.js';
 
 export const PIPE = { x: 2.1, z: -0.1, radius: 0.92, height: 2.05 };
 export const STAGE = { minX: -2.3, maxX: 0.7, minZ: -0.6, maxZ: 1.6, talkSpot: new THREE.Vector3(-0.5, 0, 1.1) };
@@ -127,7 +128,7 @@ function block(textureFn, kind) {
 export function buildWorld(scene) {
   const updaters = [];
   scene.add(skyDome());
-  scene.fog = new THREE.Fog(0xc9f0ff, 30, 90);
+  scene.fog = new THREE.Fog(0xc9f0ff, 40, 140);
 
   // Lights
   const hemi = new THREE.HemisphereLight(0xdff4ff, 0x4a8a3a, 1.35);
@@ -161,7 +162,7 @@ export function buildWorld(scene) {
   // Hills with eyes, castle, trees, bushes, flowers
   const hills = [[-12, -26, 0x2ea84a, 7, 3.2], [-4, -32, 0x3cbf55, 10, 4], [7, -27, 0x2b9a42, 6, 3], [15, -34, 0x46c95b, 9, 4.2], [-20, -36, 0x36b04f, 8, 4]];
   for (const [x, z, c, h, r] of hills) { const m = hill(c, h, r); m.position.set(x, 0, z); scene.add(m); }
-  const cas = castle(); cas.position.set(-9.5, 0, -18); cas.rotation.y = 0.35; cas.scale.setScalar(0.95); scene.add(cas);
+  const cas = castle(); cas.position.set(2.4, 0, -25); cas.rotation.y = -0.15; cas.scale.setScalar(1.2); scene.add(cas);
   updaters.push((dt, t) => { cas.userData.flag.rotation.y = Math.sin(t * 3) * 0.25; });
   for (const [x, z, s] of [[-6.5, -6, 1.1], [6.5, -7, 1.25], [-11, -10, 1.4], [11, -12, 1.5], [4.5, -14, 1.2], [-3.5, -15, 1.1]]) {
     const tr = tree(s); tr.position.set(x, 0, z); tr.rotation.y = rand(0, 6); scene.add(tr);
@@ -180,6 +181,8 @@ export function buildWorld(scene) {
     const ph = rand(0, 6);
     updaters.push((dt, t) => { f.rotation.z = Math.sin(t * 2 + ph) * 0.08; });
   }
+
+  addScenery(scene, updaters, { tree, bush, flower, hill }, { PIPE, STAGE });
 
   // The green warp pipe. Open on top so Luigi can rise out of it.
   const pipe = new THREE.Group();
