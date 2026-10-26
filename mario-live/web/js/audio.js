@@ -43,8 +43,14 @@ export class AudioSystem {
     return this.level;
   }
 
-  playSpeech(url, rate = 1) {
+  // Plays a voice clip through the cartoon voice filter:
+  //   nasal  - honky mid boost (Mario/Luigi's "nasal" brass), in dB
+  //   bright - treble lift, in dB
+  //   bounce - sing-song pitch swing (0.05 = +-5%), at bounce_speed per second
+  //   wobble - fast nervous vibrato (Luigi)
+  playSpeech(url, rate = 1, fx = {}) {
     return new Promise((resolve) => {
+      const ctx = this.ctx;
       const el = new Audio();
       el.crossOrigin = 'anonymous';
       el.src = url;
@@ -52,12 +58,42 @@ export class AudioSystem {
       el.mozPreservesPitch = false;
       el.webkitPreservesPitch = false;
       el.playbackRate = rate;
-      const src = this.ctx.createMediaElementSource(el);
-      src.connect(this.analyser);
+
+      const filter = (type, freq, gain = 0, q = 1) => {
+        const f = ctx.createBiquadFilter();
+        f.type = type; f.frequency.value = freq; f.gain.value = gain; f.Q.value = q;
+        return f;
+      };
+      const nasal = Number(fx.nasal) || 0, bright = Number(fx.bright) || 0;
+      const chain = [
+        filter('highpass', 170, 0, 0.7),          // thin out the chest, cartoon voices are light
+        filter('peaking', 1300, nasal, 1.3),       // nasal honk
+        filter('peaking', 2500, nasal * 0.5, 2.2), // brassy edge
+        filter('highshelf', 3800, bright),         // sparkle
+      ];
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -22; comp.ratio.value = 4; comp.attack.value = 0.004; comp.release.value = 0.15;
+      const out = ctx.createGain();
+      out.gain.value = 0.95;
+      const src = ctx.createMediaElementSource(el);
+      [src, ...chain, comp, out].reduce((a, b) => { a.connect(b); return b; });
+      out.connect(this.analyser);
+
+      const bounce = Number(fx.bounce) || 0, speed = Number(fx.bounce_speed) || 2, wobble = Number(fx.wobble) || 0;
+      const mod = (bounce || wobble) ? setInterval(() => {
+        const t = el.currentTime;
+        el.playbackRate = rate * (1 + bounce * Math.sin(2 * Math.PI * speed * t) * (0.6 + 0.4 * Math.sin(t * 0.9))
+          + wobble * Math.sin(2 * Math.PI * 7 * t));
+      }, 30) : null;
+
       this.current = el;
+      let finished = false;
       const done = () => {
+        if (finished) return;
+        finished = true;
+        if (mod) clearInterval(mod);
         if (this.current === el) this.current = null;
-        try { src.disconnect(); } catch (e) { /* already gone */ }
+        for (const n of [src, ...chain, comp, out]) { try { n.disconnect(); } catch (e) { /* already gone */ } }
         resolve();
       };
       el.onended = done;

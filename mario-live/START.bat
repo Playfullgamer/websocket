@@ -60,6 +60,33 @@ if errorlevel 1 (
 )
 
 rem ------------------------------------------------------------
+rem  2b. Voice clone engine - only when there's an impression clip
+rem      in assets\voices (recorded in the Voice Lab or dropped in)
+rem ------------------------------------------------------------
+set "HASCLIP="
+for %%E in (wav flac mp3 ogg) do (
+    if exist "assets\voices\mario.%%E" set "HASCLIP=1"
+    if exist "assets\voices\luigi.%%E" set "HASCLIP=1"
+)
+if defined HASCLIP if not exist ".venv\clone-installed.txt" (
+    echo [setup] Impression clip found. Installing the voice clone engine - big download, 2-4 GB, one time only...
+    where nvidia-smi >nul 2>nul
+    if !errorlevel! == 0 (
+        echo [setup] NVIDIA graphics card found - installing the fast GPU version.
+        "%VPY%" -m pip install --disable-pip-version-check torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+    ) else (
+        echo [setup] No NVIDIA card found - installing the CPU version. Lines will take a few seconds each.
+        "%VPY%" -m pip install --disable-pip-version-check torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+    )
+    "%VPY%" -m pip install --disable-pip-version-check chatterbox-tts
+    if errorlevel 1 (
+        echo [warn] The voice clone engine didn't install. Mario will use the normal voice for now.
+    ) else (
+        echo done> ".venv\clone-installed.txt"
+    )
+)
+
+rem ------------------------------------------------------------
 rem  3. Ollama - runs the free Hugging Face AI model on your PC
 rem ------------------------------------------------------------
 set "OLLAMA="

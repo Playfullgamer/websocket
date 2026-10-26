@@ -19,6 +19,7 @@ from collections import deque
 from aiohttp import WSMsgType, web
 
 from .brain import Brain
+from .clone_voice import VOICES_DIR, CloneVoice
 from .config import ROOT, load_config, save_value
 from .safety import Safety
 from .tiktok_chat import TikTokChat
@@ -279,10 +280,11 @@ class Show:
         if raw["kind"] == "question":
             item["text"] = await self.brain.answer(character, raw["user"], raw["question"])
         audio_id, words, duration = await self.voice.speak(character, item["text"])
-        item["audio"] = f"/audio/{audio_id}.mp3" if audio_id else None
+        item["audio"] = f"/audio/{audio_id}" if audio_id else None
         item["words"] = words
         item["duration"] = duration or max(2.5, len(item["text"].split()) * 0.4)
         item["playback_rate"] = self.voice.playback_rate(character)
+        item["fx"] = self.voice.fx(character)
         if raw["kind"] == "question":
             print(f"[{character}] ({time.monotonic() - started:.1f}s) {item['text']}")
         return item
@@ -372,7 +374,7 @@ def console_input(loop, show):
                 show.add_question("Streamer", line, user_id="__console__", bypass_cooldown=True), loop)
 
 
-def build_app(config, hub, show, voice):
+def build_app(config, hub, show, voice, safety):
     app = web.Application()
 
     async def index(request):
@@ -395,10 +397,84 @@ def build_app(config, hub, show, voice):
         })
 
     async def audio(request):
-        data = voice.get_audio(request.match_info["audio_id"])
-        if data is None:
+        found = voice.get_audio(request.match_info["audio_id"])
+        if found is None:
             raise web.HTTPNotFound()
-        return web.Response(body=data, content_type="audio/mpeg")
+        data, mime = found
+        return web.Response(body=data, content_type=mime)
+
+    def clean_voice_settings(raw):
+        """Only accept known, sane voice settings from the Voice Lab."""
+        out = {}
+        if isinstance(raw.get("voice"), str) and re.fullmatch(r"[A-Za-z]{2,3}-[A-Za-z]{2,4}-\w+", raw["voice"]):
+            out["voice"] = raw["voice"]
+        if isinstance(raw.get("pitch"), str) and re.fullmatch(r"[+-]\d{1,3}Hz", raw["pitch"]):
+            out["pitch"] = raw["pitch"]
+        if isinstance(raw.get("rate"), str) and re.fullmatch(r"[+-]\d{1,3}%", raw["rate"]):
+            out["rate"] = raw["rate"]
+        limits = {"playback_rate": (0.6, 1.6), "bounce": (0, 0.2), "bounce_speed": (0.5, 6),
+                  "nasal": (-6, 15), "bright": (-6, 12), "wobble": (0, 0.1)}
+        for key, (lo, hi) in limits.items():
+            try:
+                out[key] = min(hi, max(lo, float(raw[key])))
+            except (KeyError, TypeError, ValueError):
+                pass
+        if "accent" in raw:
+            out["accent"] = bool(raw["accent"])
+        return out
+
+    async def voices_list(request):
+        try:
+            names = await voice.list_voices()
+        except Exception as exc:
+            print(f"[voice] Couldn't fetch the voice list: {exc}")
+            names = []
+        clone = voice.clone
+        return web.json_response({
+            "voices": names, "settings": config["voices"],
+            "clone": {"status": clone.status if clone else "off",
+                      "characters": sorted(clone.conds) if clone else [],
+                      "clips": sorted(p.stem for p in VOICES_DIR.glob("*.*"))},
+        })
+
+    async def voice_clip(request):
+        """Saves an impression clip recorded in the Voice Lab (16-bit WAV from the page)."""
+        character = "luigi" if request.query.get("character") == "luigi" else "mario"
+        data = await request.read()
+        if not data.startswith(b"RIFF") or len(data) > 20 * 1024 * 1024:
+            raise web.HTTPBadRequest(text="expected a WAV file under 20 MB")
+        VOICES_DIR.mkdir(parents=True, exist_ok=True)
+        for old in VOICES_DIR.glob(f"{character}.*"):
+            old.unlink()
+        (VOICES_DIR / f"{character}.wav").write_bytes(data)
+        print(f"[voice] Saved {character.title()}'s impression clip to assets/voices/{character}.wav")
+        live = bool(voice.clone) and await voice.clone.reload(character)
+        return web.json_response({"ok": True, "live": live})
+
+    async def voice_test(request):
+        data = await request.json()
+        character = "luigi" if data.get("character") == "luigi" else "mario"
+        settings = clean_voice_settings(data.get("settings") or {})
+        text = safety.tidy(str(data.get("text") or ""), 200) or "It's-a me, Mario! Let's-a go!"
+        if data.get("engine") == "clone" and voice.uses_clone(character):
+            audio_id, words, duration = await voice.speak(character, text)
+            fx = voice.fx(character)
+        else:
+            audio_id, words, duration = await voice.speak(character, text, override=settings)
+            fx = voice.fx(character, settings)
+        return web.json_response({
+            "audio": f"/audio/{audio_id}" if audio_id else None, "words": words, "duration": duration,
+            "text": text, "fx": fx,
+        })
+
+    async def voice_save(request):
+        data = await request.json()
+        character = "luigi" if data.get("character") == "luigi" else "mario"
+        settings = clean_voice_settings(data.get("settings") or {})
+        config["voices"][character].update(settings)
+        save_value("voices", config["voices"])
+        print(f"[voice] Saved {character.title()}'s voice settings to config.json")
+        return web.json_response({"ok": True, "settings": config["voices"][character]})
 
     async def ws_handler(request):
         ws = web.WebSocketResponse(heartbeat=20)
@@ -430,7 +506,11 @@ def build_app(config, hub, show, voice):
     app.router.add_get("/", index)
     app.router.add_get("/ws", ws_handler)
     app.router.add_get("/api/config", page_config)
-    app.router.add_get("/audio/{audio_id}.mp3", audio)
+    app.router.add_get("/api/voices", voices_list)
+    app.router.add_post("/api/voice-test", voice_test)
+    app.router.add_post("/api/voice-save", voice_save)
+    app.router.add_post("/api/voice-clip", voice_clip)
+    app.router.add_get("/audio/{audio_id}", audio)
     app.router.add_static("/static/", WEB_DIR)
     ASSETS_DIR.mkdir(exist_ok=True)
     app.router.add_static("/assets/", ASSETS_DIR)
@@ -450,12 +530,13 @@ async def main():
     safety = Safety(config["blocked_words"])
     hub = Hub()
     brain = Brain(config, safety)
-    voice = Voice(config)
+    clone = CloneVoice(config)
+    voice = Voice(config, clone)
     show = Show(config, hub, brain, voice, safety)
     chat = TikTokChat(config["tiktok_username"], config["tiktok_sign_api_key"], show.on_event)
     show.tiktok_status = chat.status
 
-    app = build_app(config, hub, show, voice)
+    app = build_app(config, hub, show, voice, safety)
     runner = web.AppRunner(app, access_log=None)
     await runner.setup()
     try:
@@ -484,6 +565,7 @@ async def main():
     async def ai_setup():
         await brain.ensure_ready()
         await show.send_status()
+        await clone.load()
 
     await asyncio.gather(ai_setup(), chat.run(), show.run())
 

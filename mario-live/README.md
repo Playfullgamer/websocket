@@ -46,7 +46,8 @@ press **D** in the Mario window to open a test panel. Press D again to hide it b
 | `like_goal` | Likes needed per goal. Set it to `0` to hide the bar. |
 | `idle_chatter_seconds` | Mario talks to chat when it has been quiet this long. Set it to `0` to turn this off. |
 | `blocked_words` | Extra words to filter. |
-| `voices` | Voice, `pitch`, `rate` and `playback_rate` for each character. Raise `pitch` or `playback_rate` for a higher, more cartoony voice. |
+| `voices` | Built-in voice settings for each character. Easiest to change in the Voice Lab. |
+| `clone` | Settings for the impression voice (see below). |
 
 ## Use your own 3D models (optional)
 
@@ -59,11 +60,27 @@ The app works out of the box with its built-in Mario and Luigi. To use other mod
 
 Only use models and music you have the rights to stream.
 
-## About the voices
+## Making them sound like Mario and Luigi
 
-The voices are made to sound *like* cartoon Mario and Luigi, with an Italian accent and a high, bouncy pitch.
-They are not a clone of the real voice actor. Copying a real person's voice so that anyone in chat can make it say
-anything isn't something this project does. You can tune the sound under `voices` in `config.json`.
+There are two levels. Press **D** in the Mario window, then click **Voice Lab**.
+
+**1. Impression voice (sounds the most like them).** Record 10–20 seconds of someone doing a good
+Mario impression. That can be you, or a friend who's OK with it. Use **Record impression**, or **Upload clip**
+for a file, then do the same on the Luigi tab. Run `START.bat` again. It installs a free voice-cloning model
+([Chatterbox](https://huggingface.co/ResembleAI/chatterbox), MIT license, downloaded from Hugging Face), and
+from then on every answer is spoken in that impression voice. You can also put the files straight into
+`assets/voices/` as `mario.wav` and `luigi.wav`.
+
+- The download is big, about 2–4 GB, one time only. An NVIDIA graphics card makes it fast. Without one it
+  still works, but each line takes a few seconds to make.
+- Tips for a good clip: talk in full, energetic sentences ("It's-a me, Mario! Let's-a go!"), with no
+  background music, close to the mic.
+- `clone` in `config.json`: `exaggeration` sets how over-the-top the delivery is (0.3–1.0), `playback_rate` speeds it up.
+- Use a voice you have permission to use. Don't use clips of the real voice actors.
+
+**2. Built-in voice (no setup).** An Italian voice reading English, with a light Mario accent ("it's-a",
+"let's-a") and a cartoon voice filter. The sliders control nasal honk, brightness, sing-song bounce and
+Luigi's nervous wobble. Press **Test** to hear it and **Save** to keep it.
 
 ## Troubleshooting
 

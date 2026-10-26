@@ -4,6 +4,7 @@ import { buildWorld, PIPE, STAGE } from './world.js';
 import { createCharacter } from './character.js';
 import { AudioSystem } from './audio.js';
 import { Overlay } from './overlay.js';
+import { setupVoiceLab } from './voicelab.js';
 
 const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -234,12 +235,13 @@ async function perform(msg) {
   const total = (msg.duration || 3) / (msg.playback_rate || 1);
   let captionTimer = setInterval(() => {
     const el = audio.current;
-    if (el) overlay.updateCaption(el.currentTime, null);
+    if (el && msg.words?.length) overlay.updateCaption(el.currentTime, null);
+    else if (el && el.duration) overlay.updateCaption(null, el.currentTime / el.duration);
     else overlay.updateCaption(null, (performance.now() - start) / 1000 / total);
   }, 50);
 
   if (audio.locked) { refreshUnlock(); await audio.ready(); refreshUnlock(); }
-  if (msg.audio) await audio.playSpeech(msg.audio, msg.playback_rate || 1);
+  if (msg.audio) await audio.playSpeech(msg.audio, msg.playback_rate || 1, msg.fx || {});
   else await audio.speakFallback(msg.text, msg.character);
 
   clearInterval(captionTimer);
@@ -332,6 +334,7 @@ $('debug-form').addEventListener('submit', (e) => {
   if (text && socket?.readyState === 1) socket.send(JSON.stringify({ type: 'ask', user: 'Tester', text }));
   $('debug-input').value = '';
 });
+setupVoiceLab((msg) => { performQueue.push(msg); runPerformQueue(); });
 $('debug-hearts').onclick = () => handle({ type: 'like', count: 12 });
 $('debug-gift').onclick = () => handle({ type: 'gift', user: 'Tester', gift: 'Rose', count: 1, vip: true });
 
