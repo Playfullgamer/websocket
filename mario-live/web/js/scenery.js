@@ -410,4 +410,189 @@ export function addScenery(scene, updaters, h, { PIPE, STAGE }) {
     a.needsUpdate = true;
     sp.material.opacity = 0.4 + Math.sin(t * 2) * 0.2;
   });
+
+  fillGround(scene, h, { PIPE, STAGE });
+}
+
+// ---------- filling the open ground, in an orderly way ----------
+
+function plazaTexture() {
+  return canvasTexture(512, 512, (g, w) => {
+    const c = w / 2;
+    g.save();
+    g.beginPath(); g.arc(c, c, c, 0, Math.PI * 2); g.clip();
+    const n = 10, s = w / n;
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      g.fillStyle = (x + y) % 2 ? '#f4e4bc' : '#e7cf96';
+      g.fillRect(x * s, y * s, s, s);
+    }
+    g.strokeStyle = 'rgba(120,80,30,0.25)'; g.lineWidth = 2;
+    for (let i = 0; i <= n; i++) { g.beginPath(); g.moveTo(i * s, 0); g.lineTo(i * s, w); g.moveTo(0, i * s); g.lineTo(w, i * s); g.stroke(); }
+    // Brick border ring
+    g.lineWidth = 34; g.strokeStyle = '#c4622d';
+    g.beginPath(); g.arc(c, c, c - 17, 0, Math.PI * 2); g.stroke();
+    g.strokeStyle = '#3d1c0c'; g.lineWidth = 3;
+    for (let i = 0; i < 36; i++) {
+      const a = (i / 36) * Math.PI * 2;
+      g.beginPath(); g.moveTo(c + Math.cos(a) * (c - 34), c + Math.sin(a) * (c - 34)); g.lineTo(c + Math.cos(a) * c, c + Math.sin(a) * c); g.stroke();
+    }
+    g.beginPath(); g.arc(c, c, c - 34, 0, Math.PI * 2); g.stroke();
+    // Faint star in the middle
+    g.translate(c, c); g.fillStyle = 'rgba(255,200,40,0.55)';
+    g.beginPath();
+    for (let i = 0; i < 10; i++) { const r = i % 2 ? 26 : 62; const a = (i / 10) * Math.PI * 2 - Math.PI / 2; g.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+    g.closePath(); g.fill();
+    g.restore();
+  });
+}
+
+function signpost(text) {
+  const g = new THREE.Group();
+  const wood = toon(0xc98a4b);
+  g.add(part(new THREE.BoxGeometry(0.16, 1.4, 0.16), wood, { pos: [0, 0.7, 0], outline: 0.015 }));
+  const tex = canvasTexture(256, 128, (c, w, hh) => {
+    c.fillStyle = '#d99a58'; c.fillRect(0, 0, w, hh);
+    c.strokeStyle = '#8a5526'; c.lineWidth = 3;
+    for (let y = 32; y < hh; y += 32) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); }
+    c.font = '900 52px "Arial Black", Arial, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.lineWidth = 8; c.strokeStyle = '#3d1c0c'; c.strokeText(text, w / 2, hh / 2 + 4);
+    c.fillStyle = '#ffffff'; c.fillText(text, w / 2, hh / 2 + 4);
+  });
+  const board = part(new THREE.BoxGeometry(1.3, 0.65, 0.1), [wood, wood, wood, wood, new THREE.MeshToonMaterial({ map: tex }), wood], { pos: [0, 1.3, 0.05], outline: 0.02 });
+  g.add(board);
+  return g;
+}
+
+function hedge(length) {
+  const g = new THREE.Group();
+  const m = toon(0x2e9e3c);
+  const n = Math.max(2, Math.round(length / 0.55));
+  for (let i = 0; i < n; i++) {
+    g.add(part(new THREE.SphereGeometry(0.42, 14, 10), m, { pos: [(i / (n - 1) - 0.5) * length, 0.32, 0], scale: [1, 0.85, 0.9], outline: 0.03 }));
+  }
+  return g;
+}
+
+// Hundreds of tiny flowers for a few draw calls (instanced).
+function meadow(points) {
+  const petals = [];
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    const p = new THREE.SphereGeometry(0.075, 6, 4);
+    p.scale(1, 0.45, 1);
+    p.translate(Math.cos(a) * 0.08, 0.3, Math.sin(a) * 0.08);
+    petals.push(p);
+  }
+  const petalGeo = mergeGeometries(petals);
+  const centerGeo = new THREE.SphereGeometry(0.055, 6, 4).translate(0, 0.32, 0);
+  const stemGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.3, 4).translate(0, 0.15, 0);
+  const count = points.length;
+  const petalsMesh = new THREE.InstancedMesh(petalGeo, toon(0xffffff), count);
+  const centers = new THREE.InstancedMesh(centerGeo, toon(0xffd21f), count);
+  const stems = new THREE.InstancedMesh(stemGeo, toon(0x2b8f2b), count);
+  const colors = [0xff4f6d, 0xffffff, 0xffe14a, 0xa66bff, 0xff9f1c, 0x7fd8ff].map((c) => new THREE.Color(c));
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), pos = new THREE.Vector3();
+  points.forEach(([x, z, colorIdx], i) => {
+    pos.set(x, 0, z);
+    q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rand(0, Math.PI * 2));
+    sc.setScalar(rand(0.8, 1.3));
+    m.compose(pos, q, sc);
+    petalsMesh.setMatrixAt(i, m); centers.setMatrixAt(i, m); stems.setMatrixAt(i, m);
+    petalsMesh.setColorAt(i, colors[colorIdx % colors.length]);
+  });
+  const g = new THREE.Group();
+  g.add(petalsMesh, centers, stems);
+  return g;
+}
+
+// Rows of round trees along the sides (instanced, with ink outlines).
+function treeRows(spots) {
+  const n = spots.length;
+  const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.22, 0.3, 1.6, 8).translate(0, 0.8, 0), toon(0x8a5a2b), n);
+  const leafGeo = new THREE.SphereGeometry(1.1, 16, 12).scale(1, 1.15, 1).translate(0, 2.2, 0);
+  const leaves = new THREE.InstancedMesh(leafGeo, toon(0xffffff), n);
+  const ink = new THREE.InstancedMesh(new THREE.SphereGeometry(1.16, 16, 12).scale(1, 1.15, 1).translate(0, 2.2, 0),
+    new THREE.MeshBasicMaterial({ color: 0x1b1020, side: THREE.BackSide }), n);
+  const greens = [0x2fa33a, 0x3dbb46, 0x289634, 0x47c24f].map((c) => new THREE.Color(c));
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), pos = new THREE.Vector3();
+  spots.forEach(([x, z, s], i) => {
+    pos.set(x, 0, z);
+    q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rand(0, 6));
+    sc.setScalar(s);
+    m.compose(pos, q, sc);
+    trunk.setMatrixAt(i, m); leaves.setMatrixAt(i, m); ink.setMatrixAt(i, m);
+    leaves.setColorAt(i, greens[i % greens.length]);
+  });
+  trunk.castShadow = leaves.castShadow = true;
+  const g = new THREE.Group();
+  g.add(trunk, leaves, ink);
+  return g;
+}
+
+function fillGround(scene, h, { PIPE }) {
+  const add = (obj, x, y, z, ry = 0) => { obj.position.set(x, y, z); obj.rotation.y = ry; scene.add(obj); return obj; };
+
+  // A tiled stage circle under Mario's spot.
+  const PLAZA = { x: -0.8, z: 0.55, r: 2.5 };
+  const plazaMat = new THREE.MeshToonMaterial({ map: plazaTexture() });
+  const plaza = part(new THREE.CylinderGeometry(PLAZA.r, PLAZA.r + 0.05, 0.06, 48), [toon(0xc4622d), plazaMat, toon(0xc4622d)], { outline: 0.03, shadow: false });
+  add(plaza, PLAZA.x, 0.0, PLAZA.z);
+
+  // Front border: hedges framing the bottom of the shot, with a signpost.
+  add(hedge(3.2), -2.6, 0, 5.4);
+  add(hedge(3.2), 2.6, 0, 5.4);
+  add(signpost('ASK ME!'), 2.0, 0, 3.5, -0.25);
+
+  // Things to keep flowers off of.
+  const blocked = [
+    [PLAZA.x, PLAZA.z, PLAZA.r + 0.3], [PIPE.x, PIPE.z, 1.4], [-3.9, -4.6, 1.0], [-5.0, -14.1, 2.3],
+    [5.2, -16.5, 1.0], [2.0, 3.5, 0.6], [-3.0, 2.9, 0.7], [3.4, 2.5, 0.7],
+  ];
+  const rects = [[-4.9, -9.5, 2.0, 1.7], [5.0, -9.4, 2.3, 1.9], [-6.6, -18, 2.7, 2.2]];
+  const free = (x, z) => {
+    for (const [bx, bz, r] of blocked) if (Math.hypot(x - bx, z - bz) < r) return false;
+    for (const [rx, rz, hw, hd] of rects) if (Math.abs(x - rx) < hw && Math.abs(z - rz) < hd) return false;
+    if (z < -1.8 && z > -21 && Math.abs(x - (0.3 + Math.sin(((-2.4 - z) / 1.6) * 0.45) * 0.9 + ((-2.4 - z) / 1.6) * 0.12)) < 0.75) return false; // path
+    return true;
+  };
+
+  // Flower meadows in round patches that cover the open grass.
+  const patches = [
+    [-2.6, 4.0, 1.3, 45], [0.2, 4.3, 1.4, 50], [3.4, 4.6, 1.0, 25], [-4.6, 3.2, 1.2, 30], [4.9, 2.4, 1.2, 30],
+    [-3.4, -1.4, 1.0, 25], [3.9, -1.6, 1.0, 25], [-1.8, -5.6, 1.0, 22], [2.8, -6.4, 1.1, 25], [-2.2, -10.6, 1.2, 25],
+    [2.2, -14.6, 1.4, 30], [-1.6, -18, 1.4, 30], [-7.6, 1.2, 1.8, 45], [7.6, 0.8, 1.8, 45], [-8.2, -4.2, 1.6, 35],
+    [8.6, -4.6, 1.6, 35], [-10.2, 3.6, 2.0, 45], [10.2, 3.6, 2.0, 45], [-11, -9, 2.0, 40], [11.5, -8, 2.0, 40],
+  ];
+  const pts = [];
+  patches.forEach(([cx, cz, r, n], pi) => {
+    const main = pi % 6, accent = (pi + 3) % 6;
+    for (let i = 0; i < n; i++) {
+      const a = rand(0, Math.PI * 2), d = Math.sqrt(Math.random()) * r;
+      const x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d;
+      if (free(x, z)) pts.push([x, z, Math.random() < 0.75 ? main : accent]);
+    }
+  });
+  scene.add(meadow(pts));
+
+  // Tree lines down both sides (seen in the wide/landscape view) and bushes in front of them.
+  const spots = [];
+  for (const side of [-1, 1]) {
+    for (let row = 0; row < 3; row++) {
+      for (let z = 3 - row * 1.3; z > -34; z -= 2.6) {
+        const x = side * (9.5 + row * 3 + rand(-0.4, 0.4));
+        if (Math.hypot(x - side * 11, z + 11) < 2) continue;
+        spots.push([x, z + rand(-0.5, 0.5), rand(0.9, 1.35)]);
+      }
+    }
+  }
+  scene.add(treeRows(spots));
+  for (const side of [-1, 1]) {
+    for (let z = 4; z > -8; z -= 3) add(h.bush(rand(0.7, 0.9)), side * 7.6, 0, z + rand(-0.4, 0.4));
+  }
+
+  // Far hills all along the horizon.
+  for (let x = -70; x <= 70; x += 14) {
+    if (Math.abs(x) < 10) continue;
+    add(h.hill([0x5fb56a, 0x6cc27a, 0x58ad66][Math.abs(x / 14) % 3 | 0], rand(10, 18), rand(5, 7)), x + rand(-3, 3), 0, rand(-62, -72));
+  }
 }
