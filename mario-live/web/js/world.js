@@ -164,24 +164,12 @@ export function buildWorld(scene) {
   for (const [x, z, c, h, r] of hills) { const m = hill(c, h, r); m.position.set(x, 0, z); scene.add(m); }
   const cas = castle(); cas.position.set(2.4, 0, -25); cas.rotation.y = -0.15; cas.scale.setScalar(1.2); scene.add(cas);
   updaters.push((dt, t) => { cas.userData.flag.rotation.y = Math.sin(t * 3) * 0.25; });
-  for (const [x, z, s] of [[-6.5, -6, 1.1], [6.5, -7, 1.25], [-11, -10, 1.4], [11, -12, 1.5], [4.5, -14, 1.2], [-3.5, -15, 1.1]]) {
+  for (const [x, z, s] of [[-6.5, -6, 1.1], [6.5, -7, 1.25], [-11, -10, 1.4], [11, -12, 1.5]]) {
     const tr = tree(s); tr.position.set(x, 0, z); tr.rotation.y = rand(0, 6); scene.add(tr);
   }
-  for (const [x, z, s] of [[-4.3, -2.6, 1], [4.6, -3.2, 0.9], [-1.5, -5.2, 0.8], [0.6, -8, 1.1]]) {
+  for (const [x, z, s] of [[-4.3, -2.6, 1], [4.6, -3.2, 0.9]]) {
     const b = bush(s); b.position.set(x, 0, z); scene.add(b);
   }
-  const flowerColors = [0xff4f6d, 0xffffff, 0xff9f1c, 0xa66bff];
-  for (let i = 0; i < 22; i++) {
-    const f = flower(flowerColors[i % flowerColors.length]);
-    const x = rand(-6, 6), z = rand(-6, 3.5);
-    if (Math.abs(x - PIPE.x) < 1.4 && Math.abs(z - PIPE.z) < 1.4) continue;
-    if (x > STAGE.minX - 0.3 && x < STAGE.maxX + 0.3 && z > STAGE.minZ - 0.3 && z < STAGE.maxZ + 0.3) continue;
-    f.position.set(x, 0, z); f.rotation.y = rand(0, 6); f.scale.setScalar(rand(0.8, 1.2));
-    scene.add(f);
-    const ph = rand(0, 6);
-    updaters.push((dt, t) => { f.rotation.z = Math.sin(t * 2 + ph) * 0.08; });
-  }
-
   addScenery(scene, updaters, { tree, bush, flower, hill }, { PIPE, STAGE });
 
   // The green warp pipe. Open on top so Luigi can rise out of it.
@@ -219,15 +207,8 @@ export function buildWorld(scene) {
     }
   });
 
-  // Spinning coins
   const coinMat = toon(0xffcc1a, { emissive: 0x6a4a00, emissiveIntensity: 0.4 });
   const coinGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.07, 24);
-  const coins = [];
-  for (const [x, y, z] of [[-4.6, 2.2, -1.5], [-4.0, 2.7, -1.5], [-3.4, 2.9, -1.5], [3.9, 3.4, -2.5], [4.5, 3.0, -2.5], [5.1, 2.6, -2.5]]) {
-    const c = part(coinGeo, coinMat, { pos: [x, y, z], rot: [Math.PI / 2, 0, 0], outline: 0.02 });
-    scene.add(c); coins.push(c);
-  }
-  updaters.push((dt, t) => { coins.forEach((c, i) => { c.rotation.z = t * 2.5 + i; c.position.y += Math.sin(t * 2 + i) * 0.002; }); });
 
   // Clouds drifting across the sky
   const clouds = [];

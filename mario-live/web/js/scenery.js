@@ -1,10 +1,10 @@
 // Extra scenery that fills the view behind Mario: grassy terraces, a cliff with a
-// waterfall and pond, giant mushrooms, a floating island, a Piranha Plant pipe,
-// a walking Koopa, a Power Star, butterflies, grass tufts and floating sparkles.
+// waterfall and pond, a giant mushroom, a Piranha Plant pipe, a walking Koopa,
+// a Power Star, butterflies, grass tufts and floating sparkles.
 // Positions are chosen to sit inside the portrait (TikTok) camera view.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { toon, part, canvasTexture, grassTexture, questionBlockTexture, brickTexture, pipeTexture } from './toon.js';
+import { toon, part, canvasTexture, grassTexture, pipeTexture } from './toon.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
 
@@ -97,21 +97,6 @@ function giantMushroom(capColor, h, r) {
     spot.scale.set(1, 1, 0.25);
     cap.add(spot);
   }
-  return g;
-}
-
-function floatingIsland() {
-  const g = new THREE.Group();
-  const top = GRASS.clone(); top.needsUpdate = true; top.repeat.set(2, 2);
-  g.add(part(new THREE.CylinderGeometry(2.6, 2.4, 0.6, 28), [new THREE.MeshToonMaterial({ map: sideTexture() }), new THREE.MeshToonMaterial({ map: top }), toon(0xb5652c)], { outline: 0.05 }));
-  g.add(part(new THREE.ConeGeometry(2.4, 3.2, 28), toon(0xa85a26), { pos: [0, -1.9, 0], rot: [Math.PI, 0, 0], outline: 0.05 }));
-  for (const [x, y, z, r] of [[-1.2, -1.2, 1.1, 0.5], [1.0, -1.6, 0.9, 0.4], [0.2, -2.6, 1.0, 0.35]]) {
-    g.add(part(new THREE.DodecahedronGeometry(r), toon(0x8f8a84), { pos: [x, y, z], outline: 0.02, shadow: false }));
-  }
-  const fall = waterfall(1.1, 9);
-  fall.position.set(0.9, -4.4, 2.2);
-  g.add(fall);
-  g.userData.fall = fall;
   return g;
 }
 
@@ -250,32 +235,19 @@ function grassTufts(count, area, avoid) {
     blades.push(c);
   }
   const geo = mergeGeometries(blades);
-  const mesh = new THREE.InstancedMesh(geo, toon(0x2f9e2a), count);
+  const mesh = new THREE.InstancedMesh(geo, toon(0x3aa82c), count);
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
   let n = 0;
   while (n < count) {
     p.set(rand(area.minX, area.maxX), 0, rand(area.minZ, area.maxZ));
     if (avoid(p.x, p.z)) continue;
     q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rand(0, Math.PI * 2));
-    s.setScalar(rand(0.7, 1.5));
+    s.setScalar(rand(0.6, 1.1));
     m.compose(p, q, s);
     mesh.setMatrixAt(n++, m);
   }
   mesh.receiveShadow = true;
   return mesh;
-}
-
-function fence(length) {
-  const g = new THREE.Group();
-  const wood = toon(0xc98a4b);
-  const posts = Math.max(2, Math.round(length / 0.9) + 1);
-  for (let i = 0; i < posts; i++) {
-    const x = (i / (posts - 1)) * length;
-    g.add(part(new THREE.BoxGeometry(0.14, 0.75, 0.14), wood, { pos: [x, 0.375, 0], outline: 0.015 }));
-    g.add(part(new THREE.ConeGeometry(0.1, 0.14, 4), wood, { pos: [x, 0.82, 0], rot: [0, Math.PI / 4, 0], outline: 0, shadow: false }));
-  }
-  for (const y of [0.3, 0.58]) g.add(part(new THREE.BoxGeometry(length, 0.09, 0.07), wood, { pos: [length / 2, y, 0.08], outline: 0.012 }));
-  return g;
 }
 
 function sparkles(count) {
@@ -292,82 +264,56 @@ function sparkles(count) {
   return pts;
 }
 
+// Layout, back to front, kept in clear layers so Mario stays the focus:
+//   far:    rolling hills, the castle in the middle with open sky around it
+//   back:   cliff + waterfall + pond on the left, giant orange mushroom on the right
+//   middle: one terrace each side, Piranha Plant pipe on the left, a Koopa strolling across
+//   front:  open grass around Mario, small flower clusters framing the bottom corners
 export function addScenery(scene, updaters, h, { PIPE, STAGE }) {
   const add = (obj, x, y, z, ry = 0) => { obj.position.set(x, y, z); obj.rotation.y = ry; scene.add(obj); return obj; };
-  const nearPipe = (x, z) => Math.hypot(x - PIPE.x, z - PIPE.z) < 1.4;
-  const onStage = (x, z) => x > STAGE.minX - 0.6 && x < STAGE.maxX + 0.6 && z > STAGE.minZ - 0.6 && z < STAGE.maxZ + 0.8;
+  const nearPipe = (x, z) => Math.hypot(x - PIPE.x, z - PIPE.z) < 1.6;
+  const onStage = (x, z) => x > STAGE.minX - 0.8 && x < STAGE.maxX + 0.8 && z > STAGE.minZ - 1 && z < STAGE.maxZ + 1.5;
 
-  // --- Terraces right behind the play area ---
-  const tL = add(terrace(4, 3, 1.3), -4.6, 0, -9.5);
-  add(h.tree(0.8), -5.2, tL.userData.top, -9.8);
-  add(h.bush(0.7), -3.6, tL.userData.top, -9.0);
-  const tR = add(terrace(4.2, 3.4, 2.4), 4.8, 0, -9.2);
-  add(h.tree(0.95), 5.4, tR.userData.top, -9.6, 1);
-  const tR2 = add(terrace(2.6, 2.4, 1.2), 3.1, 0, -7.6);
-  add(h.flower(0xffffff), 3.0, tR2.userData.top, -7.4);
-  add(h.flower(0xff4f6d), 3.5, tR2.userData.top, -7.9);
+  // --- Middle: a terrace on each side ---
+  const tL = add(terrace(3.6, 3, 1.3), -4.9, 0, -9.5);
+  add(h.bush(0.7), -4.6, tL.userData.top, -9.3);
+  const tR = add(terrace(4.2, 3.4, 2.4), 5.0, 0, -9.4);
+  add(h.tree(0.95), 5.5, tR.userData.top, -9.8, 1);
 
-  // Coins arcing over the terraces
-  const coinMat = toon(0xffcc1a, { emissive: 0x6a4a00, emissiveIntensity: 0.4 });
-  const coinGeo = new THREE.CylinderGeometry(0.26, 0.26, 0.07, 20);
-  const coins = [];
-  for (let i = 0; i < 5; i++) {
-    coins.push(add(part(coinGeo, coinMat, { outline: 0.02, shadow: false }), 3.6 + i * 0.55, tR.userData.top + 0.9 + Math.sin((i / 4) * Math.PI) * 0.8, -8.4));
-  }
-  for (let i = 0; i < 4; i++) coins.push(add(part(coinGeo, coinMat, { outline: 0.02, shadow: false }), -5.4 + i * 0.6, 2.4, -9));
-  coins.forEach((c) => { c.rotation.x = Math.PI / 2; });
-  updaters.push((dt, t) => coins.forEach((c, i) => { c.rotation.z = t * 2.5 + i * 0.4; }));
-
-  // --- Tall cliff with a waterfall into a pond ---
-  const cliff = add(terrace(5, 4, 6.5), -6.3, 0, -18);
+  // --- Back left: cliff with a waterfall into a pond ---
+  const cliff = add(terrace(5, 4, 6.5), -6.6, 0, -18);
   add(h.tree(1.1), -7.4, cliff.userData.top, -18.6);
-  add(h.tree(0.8), -5.0, cliff.userData.top, -19.0, 2);
   const fall = waterfall(1.4, 6.5);
-  add(fall, -4.8, 3.25, -15.96);
-  const pd = add(pond(2.1), -4.6, 0, -13.6);
+  add(fall, -5.1, 3.25, -15.96);
+  const pd = add(pond(1.8), -5.0, 0, -14.1);
   const foam = [];
-  for (let i = 0; i < 5; i++) {
-    foam.push(add(part(new THREE.SphereGeometry(rand(0.2, 0.35), 10, 8), toon(0xffffff), { outline: 0, shadow: false }), -4.8 + rand(-0.6, 0.6), 0.15, -15.6 + rand(-0.3, 0.3)));
+  for (let i = 0; i < 4; i++) {
+    foam.push(add(part(new THREE.SphereGeometry(rand(0.2, 0.32), 10, 8), toon(0xffffff), { outline: 0, shadow: false }), -5.1 + rand(-0.5, 0.5), 0.15, -15.6 + rand(-0.2, 0.2)));
   }
   updaters.push((dt, t) => {
     fall.userData.tex.offset.y += dt * 1.6;
     pd.userData.tex.offset.x += dt * 0.03;
-    foam.forEach((f, i) => { const s = 0.8 + Math.abs(Math.sin(t * 3 + i * 1.7)) * 0.5; f.scale.setScalar(s); });
+    foam.forEach((f, i) => { f.scale.setScalar(0.8 + Math.abs(Math.sin(t * 3 + i * 1.7)) * 0.5); });
   });
 
-  // --- Giant mushrooms ---
-  add(giantMushroom(0xe3221c, 3.3, 1.7), -1.7, 0, -12.8);
-  add(giantMushroom(0xff9f1c, 5.2, 2.1), 4.4, 0, -15.5);
-  add(giantMushroom(0x2fb345, 1.8, 1.0), 0.9, 0, -9.8);
-  add(giantMushroom(0x3f7bff, 2.4, 1.2), -2.9, 0, -6.6);
+  // --- Back right: one giant mushroom ---
+  add(giantMushroom(0xff9f1c, 4.6, 2.0), 5.2, 0, -16.5);
 
-  // --- Floating stuff in the sky ---
-  const island = add(floatingIsland(), -3.2, 10.2, -27);
-  add(h.tree(0.9), -3.6, 10.5, -27.4);
-  const islandBaseY = island.position.y;
-  updaters.push((dt, t) => {
-    island.position.y = islandBaseY + Math.sin(t * 0.6) * 0.25;
-    island.userData.fall.material.map.offset.y += dt * 1.4;
-  });
-  const floatBlocks = [[-0.6, 'brick'], [0.4, 'q'], [1.4, 'brick']];
-  for (const [x, kind] of floatBlocks) {
-    const mat = new THREE.MeshToonMaterial({ map: kind === 'q' ? questionBlockTexture(false) : brickTexture() });
-    add(part(new THREE.BoxGeometry(1, 1, 1), mat, { outline: 0.03 }), x - 0.2, 6.6, -12);
-  }
-  const star = add(powerStar(), 3.4, 8.2, -16);
+  // --- Sky: a Power Star floating above the cliff ---
+  const star = add(powerStar(), -3.9, 7.4, -16);
   updaters.push((dt, t) => {
     star.rotation.y = t * 1.6;
-    star.position.y = 8.2 + Math.sin(t * 1.5) * 0.3;
+    star.position.y = 7.4 + Math.sin(t * 1.5) * 0.3;
   });
 
-  // --- Piranha Plant in its own pipe ---
-  const pp = add(smallPipe(1.5, 0.6), -3.9, 0, -4.4);
+  // --- Middle left: Piranha Plant in its own pipe ---
+  const pp = add(smallPipe(1.5, 0.6), -3.9, 0, -4.6);
   const plant = piranhaPlant();
   pp.add(plant);
   const plantDown = -2.0, plantUp = 1.15;
   plant.position.y = plantDown;
   updaters.push((dt, t) => {
-    const cycle = t % 7;
+    const cycle = t % 9;
     const k = cycle < 1 ? cycle : cycle < 4 ? 1 : cycle < 5 ? 5 - cycle : 0;
     const e = k * k * (3 - 2 * k);
     plant.position.y = plantDown + (plantUp - plantDown) * e;
@@ -377,14 +323,16 @@ export function addScenery(scene, updaters, h, { PIPE, STAGE }) {
     plant.userData.head.rotation.z = Math.sin(t * 2) * 0.15;
   });
 
-  // --- A Koopa strolling behind the stage ---
+  // --- A Koopa strolling back and forth along the far path ---
   const kp = koopa();
-  kp.scale.setScalar(0.9);
+  kp.scale.setScalar(0.85);
   scene.add(kp);
   updaters.push((dt, t) => {
-    const a = t * 0.28;
-    kp.position.set(0.6 + Math.cos(a) * 3.1, 0, -6.9 + Math.sin(a) * 1.0);
-    kp.rotation.y = Math.atan2(-Math.sin(a) * 3.1, Math.cos(a) * 1.0);
+    const ph = t * 0.22;
+    const x = 0.7 + Math.sin(ph) * 2.6;
+    const dir = Math.cos(ph) >= 0 ? 1 : -1;
+    kp.position.set(x, 0, -12);
+    kp.rotation.y += ((dir > 0 ? Math.PI / 2 : -Math.PI / 2) - kp.rotation.y) * Math.min(1, dt * 5);
     const step = Math.sin(t * 8);
     kp.userData.feet[0].position.y = 0.1 + Math.max(0, step) * 0.12;
     kp.userData.feet[1].position.y = 0.1 + Math.max(0, -step) * 0.12;
@@ -392,69 +340,74 @@ export function addScenery(scene, updaters, h, { PIPE, STAGE }) {
     kp.userData.head.rotation.z = step * 0.08;
   });
 
-  // --- Fences, rocks, a stepping-stone path ---
-  add(fence(3.2), -6.6, 0, -2.6, 0.08);
-  add(fence(2.8), 3.6, 0, -3.4, -0.1);
-  const rock = toon(0x9a958d);
-  for (const [x, z, s] of [[-3.3, 3.0, 0.35], [3.2, 2.6, 0.45], [-2.4, -3.2, 0.3], [1.8, -5.2, 0.4], [-5.5, -12, 0.6], [6.5, -13, 0.7]]) {
-    const r = add(part(new THREE.DodecahedronGeometry(s), rock, { outline: 0.02 }), x, s * 0.5, z, rand(0, 6));
-    r.scale.y = 0.7;
-  }
+  // --- Stepping-stone path leading back to the castle ---
   const stone = toon(0xe8d6ae);
-  for (let i = 0; i < 16; i++) {
-    const z = -1.6 - i * 1.15;
-    const x = 0.2 + Math.sin(i * 0.5) * 1.2 + i * 0.12;
-    if (nearPipe(x, z)) continue;
+  for (let i = 0; i < 12; i++) {
+    const z = -2.4 - i * 1.6;
+    const x = 0.3 + Math.sin(i * 0.45) * 0.9 + i * 0.12;
     add(part(new THREE.CylinderGeometry(0.42, 0.46, 0.08, 14), stone, { outline: 0.015, shadow: false }), x, 0.04, z, rand(0, 6));
   }
 
-  // --- More trees, bushes and flowers inside the camera view ---
-  for (const [x, z, s] of [[-2.2, -16, 1.0], [1.6, -18, 0.9], [6.8, -20, 1.3], [-0.4, -22, 1.1], [7.2, -11.5, 1.0]]) add(h.tree(s), x, 0, z, rand(0, 6));
-  for (const [x, z, s] of [[2.2, -6.2, 0.7], [-0.8, -9.2, 0.6], [6, -6, 0.8], [-6, -6.5, 0.9], [2.8, -12.5, 0.8]]) add(h.bush(s), x, 0, z);
-  const colors = [0xff4f6d, 0xffffff, 0xff9f1c, 0xa66bff, 0xffe14a];
-  for (let i = 0; i < 40; i++) {
-    const x = rand(-6, 6), z = rand(-11, 4.5);
-    if (nearPipe(x, z) || onStage(x, z)) continue;
-    const f = add(h.flower(colors[i % colors.length]), x, 0, z, rand(0, 6));
-    f.scale.setScalar(rand(0.8, 1.25));
-    const ph = rand(0, 6);
-    updaters.push((dt, t) => { f.rotation.z = Math.sin(t * 2 + ph) * 0.08; });
+  // --- A few trees and rocks at the sides only (the middle stays open) ---
+  for (const [x, z, s] of [[7.2, -20, 1.3], [-9, -13, 1.2], [8.6, -13.5, 1.1]]) add(h.tree(s), x, 0, z, rand(0, 6));
+  for (const [x, z, s] of [[-6, -6.5, 0.9], [6.2, -6, 0.8]]) add(h.bush(s), x, 0, z);
+  const rock = toon(0x9a958d);
+  for (const [x, z, s] of [[-3.0, -13.2, 0.5], [3.4, -13.5, 0.55]]) {
+    add(part(new THREE.DodecahedronGeometry(s), rock, { outline: 0.02 }), x, s * 0.35, z, rand(0, 6)).scale.y = 0.7;
   }
-  scene.add(grassTufts(900, { minX: -10, maxX: 10, minZ: -22, maxZ: 5.5 }, (x, z) => onStage(x, z) || nearPipe(x, z)));
 
-  // --- Distant hills ring so the horizon is never bare ---
-  const far = [[-14, -45, 0x5fb56a, 14, 6], [-2, -52, 0x6cc27a, 18, 7], [12, -46, 0x58ad66, 12, 6], [24, -55, 0x6cc27a, 16, 7], [-26, -54, 0x5fb56a, 15, 7]];
+  // --- Flowers in tidy little clusters ---
+  const clusters = [
+    [-3.0, 2.9, [0xff4f6d, 0xffffff, 0xff4f6d]],
+    [3.4, 2.5, [0xffe14a, 0xff9f1c, 0xffe14a]],
+    [-5.2, -2.2, [0xa66bff, 0xffffff, 0xa66bff]],
+    [5.4, -4.4, [0xff4f6d, 0xffe14a, 0xffffff]],
+    [-1.6, -7.8, [0xffffff, 0xff9f1c, 0xffffff]],
+  ];
+  for (const [cx, cz, cols] of clusters) {
+    cols.forEach((c, i) => {
+      const a = (i / cols.length) * Math.PI * 2;
+      const f = add(h.flower(c), cx + Math.cos(a) * 0.32, 0, cz + Math.sin(a) * 0.32, rand(0, 6));
+      f.scale.setScalar(1 + (i % 2) * 0.15);
+      const ph = rand(0, 6);
+      updaters.push((dt, t) => { f.rotation.z = Math.sin(t * 2 + ph) * 0.07; });
+    });
+  }
+
+  // Sparse grass tufts to break up the ground, kept away from the camera.
+  scene.add(grassTufts(260, { minX: -9, maxX: 9, minZ: -20, maxZ: 1 }, (x, z) => onStage(x, z) || nearPipe(x, z)));
+
+  // --- Hills: one tidy row behind the castle, plus faint distant ones ---
+  const far = [[-14, -45, 0x5fb56a, 14, 6], [12, -46, 0x58ad66, 12, 6], [24, -55, 0x6cc27a, 16, 7], [-26, -54, 0x5fb56a, 15, 7]];
   for (const [x, z, c, hh, r] of far) add(h.hill(c, hh, r), x, 0, z);
-  const mid = [[-7.5, -24, 0x3cbf55, 5, 2.4], [8.5, -23, 0x2ea84a, 6, 2.6], [0.5, -30, 0x46c95b, 7, 3]];
-  for (const [x, z, c, hh, r] of mid) add(h.hill(c, hh, r), x, 0, z);
+  for (const [x, z, c, hh, r] of [[-8.5, -26, 0x3cbf55, 5, 2.4], [10, -27, 0x2ea84a, 6, 2.6]]) add(h.hill(c, hh, r), x, 0, z);
 
-  // --- Butterflies and floating sparkles for constant gentle motion ---
-  const flyers = ['#ff8fd1', '#ffe14a', '#7fd8ff', '#ffffff', '#ffb347', '#b28dff'].map((c) => butterfly(c));
-  flyers.forEach((b, i) => {
+  // --- Three butterflies and a light dusting of sparkles ---
+  ['#ff8fd1', '#ffe14a', '#7fd8ff'].forEach((c, i) => {
+    const b = butterfly(c);
     scene.add(b);
-    const seed = i * 1.7, cx = rand(-4, 3), cz = rand(-5, 2.5);
+    const seed = i * 2.3, cx = [-3.2, 3.6, -1][i], cz = [0.5, 0, -4][i];
     updaters.push((dt, t) => {
-      const x = cx + Math.sin(t * 0.5 + seed) * 2.2;
-      const z = cz + Math.sin(t * 0.37 + seed * 2) * 1.6;
-      const y = 1.3 + Math.sin(t * 1.3 + seed) * 0.6;
-      const nx = cx + Math.sin((t + 0.05) * 0.5 + seed) * 2.2, nz = cz + Math.sin((t + 0.05) * 0.37 + seed * 2) * 1.6;
-      b.position.set(x, y, z);
-      b.rotation.y = Math.atan2(nx - x, nz - z);
+      const px = (tt) => cx + Math.sin(tt * 0.5 + seed) * 1.4;
+      const pz = (tt) => cz + Math.sin(tt * 0.37 + seed * 2) * 1.2;
+      const x = px(t), z = pz(t);
+      b.position.set(x, 1.4 + Math.sin(t * 1.3 + seed) * 0.5, z);
+      b.rotation.y = Math.atan2(px(t + 0.05) - x, pz(t + 0.05) - z);
       const flap = Math.sin(t * 22 + seed) * 1.1;
       for (const w of b.userData.wings) w.pivot.rotation.z = w.sx * flap;
     });
   });
-  const sp = sparkles(80);
+  const sp = sparkles(30);
+  sp.material.size = 0.16;
   scene.add(sp);
   updaters.push((dt, t) => {
     const a = sp.geometry.attributes.position;
     for (let i = 0; i < a.count; i++) {
-      let y = a.getY(i) + dt * 0.25;
+      let y = a.getY(i) + dt * 0.2;
       if (y > 7) y = 0.3;
       a.setY(i, y);
-      a.setX(i, a.getX(i) + Math.sin(t + i) * dt * 0.1);
     }
     a.needsUpdate = true;
-    sp.material.opacity = 0.55 + Math.sin(t * 2) * 0.25;
+    sp.material.opacity = 0.4 + Math.sin(t * 2) * 0.2;
   });
 }

@@ -4,9 +4,8 @@ A 3D Mushroom Kingdom scene where an animated Mario answers your TikTok LIVE cha
 Mention **Luigi** and Luigi pops out of the green pipe to answer instead.
 
 - **Fully 3D**: rigged Mario & Luigi with idle, walk, run, jump, wave, think, celebrate and lip-synced talking.
-  The world has a castle, grassy terraces, a cliff with a waterfall and pond, giant mushrooms, a floating island,
-  a spinning Power Star, a Piranha Plant pipe, a walking Koopa and Goomba, butterflies, ? blocks Mario bonks for coins,
-  and the warp pipe.
+  The world has a castle, grassy terraces, a cliff with a waterfall and pond, a giant mushroom, a spinning Power Star,
+  a Piranha Plant pipe, a walking Koopa and Goomba, butterflies, ? blocks Mario bonks for coins, and the warp pipe.
 - **Free AI**: a Llama 3.2 3B model from Hugging Face, run on your own PC by [Ollama](https://ollama.com).
   You don't need an account or API key, and nothing is billed per message.
 - **Voices**: free text-to-speech (an Italian voice reading English, pitched up for a cartoon plumber sound).
