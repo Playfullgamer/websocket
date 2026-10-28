@@ -525,6 +525,16 @@
   function nationLink(n) { return `<a href="#" data-nation="${n.slot}">${esc(n.stats.root)}</a>`; }
   function countryLink(id, name) { return `<a href="#" data-country="${id}">${esc(name)}</a>`; }
 
+  // The size class a nation actually ended up with (it can be squeezed below what was rolled).
+  function sizeClass(area) {
+    const segs = WHEELS.find(w => w.key === 'size').segments;
+    return (segs.find(sg => area < sg.max) || segs[segs.length - 1]).label;
+  }
+  function sizeChip(n) {
+    const actual = sizeClass(n.stats.area);
+    return actual === n.results.size ? esc(actual) : `${esc(actual)} <small>(rolled ${esc(n.results.size)})</small>`;
+  }
+
   const TABS = [['overview', 'Overview'], ['land', 'Land'], ['people', 'People'], ['politics', 'Politics'], ['economy', 'Economy'], ['military', 'Military']];
 
   function showNation(n) {
@@ -553,7 +563,7 @@
         <p class="motto">“${esc(s.motto)}”</p>
         <div class="chips">
           <span>${esc(WorldGen.CONTINENTS[t.continent])}</span><span>${esc(r.region)}</span>
-          <span>${t.landlocked ? 'Landlocked' : 'Coastal'}</span><span>${esc(r.size)}</span>
+          <span>${t.landlocked ? 'Landlocked' : 'Coastal'}</span><span>${sizeChip(n)}</span>
         </div>
       </div>
       <nav class="tabs">${tabs}</nav>

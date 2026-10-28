@@ -314,7 +314,38 @@
     return j => countryId[j] >= 0 && continent[j] === c && owner[j] === 0 && (!landlocked || coastDist[j] >= LL_MIN);
   }
 
-  function pickSeed(c, region, landlocked, targetArea, rng, relax) {
+  // Connected pockets of land a new nation could still claim (8-connected,
+  // matching how nations grow), with their areas in km².
+  const freeLab = new Int32Array(N);
+  function freeSpace(c, landlocked) {
+    const ok = allowedFn(c, landlocked);
+    const cells = contInfo[c].cells;
+    for (let k = 0; k < cells.length; k++) freeLab[cells[k]] = -1;
+    const areas = [];
+    const q = scratch;
+    for (let k = 0; k < cells.length; k++) {
+      const s0 = cells[k];
+      if (freeLab[s0] !== -1 || !ok(s0)) continue;
+      const label = areas.length;
+      let head = 0, tail = 0, area = 0;
+      q[tail++] = s0; freeLab[s0] = label;
+      while (head < tail) {
+        const i = q[head++];
+        const y = (i / W) | 0, x = i - y * W;
+        area += cellArea(y);
+        for (const [dx, dy] of NB8) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+          const j = ny * W + nx;
+          if (continent[j] === c && freeLab[j] === -1 && ok(j)) { freeLab[j] = label; q[tail++] = j; }
+        }
+      }
+      areas.push(area);
+    }
+    return { areas, max: areas.length ? Math.max(...areas) : 0 };
+  }
+
+  function pickSeed(c, region, landlocked, targetArea, rng, relax, free) {
     const info = contInfo[c];
     const [tu, tv] = REGION_TARGET[region] || REGION_TARGET.Central;
     const approxCells = targetArea / (CELL_KM * CELL_KM * 0.8);
@@ -327,22 +358,29 @@
       minD = 1;
       maxD = relax >= 1 ? 1 : Math.max(1, Math.floor(radius * 0.3));
     }
-    const minComp = relax >= 2 ? 0 : Math.min(approxCells * 1.3, info.maxComp * 0.5);
+    // Only start where there is enough unclaimed land to reach the rolled size
+    // (or, if nowhere is big enough, in the roomiest pockets left).
+    const minFree = relax >= 2 ? 0 : Math.min(targetArea * 1.1, free.max * 0.85);
     const du = 1 / Math.max(1e-6, info.lon1 - info.lon0), dv = 1 / Math.max(1e-6, info.lat1 - info.lat0);
     const cand = [], score = [];
     const cells = info.cells;
+    let bestAny = Infinity, bestCand = Infinity;
     for (let k = 0; k < cells.length; k++) {
       const i = cells[k];
       if (owner[i]) continue;
       const d = coastDist[i];
       if (d < minD || d > maxD) continue;
-      if (compSize[comp[i]] < minComp) continue;
       const y = (i / W) | 0, x = i - y * W;
       const u = (contLon(c, lonOf(x)) - info.lon0) * du - tu;
       const v = (latOf(y) - info.lat0) * dv - tv;
-      cand.push(i); score.push(u * u + v * v);
+      const sc = u * u + v * v;
+      if (sc < bestAny) bestAny = sc;
+      if (freeLab[i] < 0 || free.areas[freeLab[i]] < minFree) continue;
+      cand.push(i); score.push(sc);
+      if (sc < bestCand) bestCand = sc;
     }
     if (!cand.length) return -1;
+    pickSeed.relocated = bestCand > bestAny + 0.04;
     const order = cand.map((_, k) => k).sort((a, b) => score[a] - score[b]);
     const pool = Math.max(1, Math.min(order.length, 40 + Math.floor(order.length * 0.01)));
     return cand[order[Math.floor(rng() * pool)]];
@@ -383,7 +421,9 @@
         const t = Math.min(1, Math.max(0, (n - 0.5) * contrast + 0.5));
         const cost = 0.45 + 2.2 * t * t + 0.35 * noise.vn(nx / fine + 311, ny / fine + 173);
         const hx = dx * cosLat[ny] * stretch, hy = dy / stretch;
-        const nd = d + Math.sqrt(hx * hx + hy * hy) * cost;
+        // Round to float32 so the heap priority matches what `dist` stores;
+        // otherwise entries look stale when popped and growth silently stalls.
+        const nd = Math.fround(d + Math.sqrt(hx * hx + hy * hy) * cost);
         if (nd < dist[j]) {
           if (dist[j] === Infinity) touched.push(j);
           dist[j] = nd;
@@ -962,11 +1002,14 @@
     const targetArea = Math.exp(Math.log(opts.minArea) + rng() * (Math.log(opts.maxArea) - Math.log(opts.minArea)));
     let landlocked = !!opts.landlocked;
     const style = opts.borderStyle || 'natural';
+    let relocated = false;
     const attempt = ll => {
       let best = null;
+      const free = freeSpace(c, ll);
       for (let tries = 0; tries < 6; tries++) {
         let seed = -1;
-        for (let relax = 0; relax <= 2 && seed < 0; relax++) seed = pickSeed(c, opts.region, ll, targetArea, rng, relax);
+        for (let relax = 0; relax <= 2 && seed < 0; relax++) seed = pickSeed(c, opts.region, ll, targetArea, rng, relax, free);
+        if (tries === 0 && seed >= 0) relocated = pickSeed.relocated;
         if (seed < 0) break;
         // Noisy growth leaves pockets that tidy() fills in, so measure and regrow once with a corrected target.
         const params = growParams(seed, targetArea, rng);
@@ -1007,6 +1050,7 @@
       best = attempt(false);
     }
     if (!best) return null;
+    if (relocated) notes.push(`The ${String(opts.region).toLowerCase()} was too crowded for a nation this size, so your settlers moved to the nearest open land.`);
     const cells = best.cells;
     const lines = best.lines;
     const coastal = cells.some(i => coastDist[i] === 1);
