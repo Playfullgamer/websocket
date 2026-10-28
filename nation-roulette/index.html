@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nation Roulette</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="logo">🎡</span><span>Nation <em>Roulette</em></span></div>
+    <div class="top-actions">
+      <button id="btn-nations" class="ghost">🏳️ My Nations <span class="count" id="nation-count">0</span></button>
+      <button id="btn-sound" class="ghost icon" title="Toggle sound">🔊</button>
+      <button id="btn-reset" class="ghost" title="Dissolve every nation">↺ Reset World</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="map-wrap" id="map-wrap">
+      <svg id="map" role="img" aria-label="World map"></svg>
+      <div class="map-controls">
+        <button id="zoom-in" title="Zoom in">+</button>
+        <button id="zoom-out" title="Zoom out">−</button>
+        <button id="zoom-home" title="Whole world">⌂</button>
+      </div>
+      <div class="map-hint">Scroll / pinch to zoom · drag to pan · click any nation for stats</div>
+      <div id="tooltip" class="tooltip hidden"></div>
+      <div id="map-toast" class="toast hidden"></div>
+      <aside id="drawer" class="drawer hidden">
+        <button id="drawer-close" class="drawer-close" title="Close">×</button>
+        <div id="drawer-body" class="drawer-body"></div>
+      </aside>
+    </section>
+
+    <section class="panel">
+      <div class="progress"><i id="progress-bar"></i></div>
+      <div class="step-header">
+        <div class="step-count" id="step-count">Wheel 1</div>
+        <h2 id="wheel-title">Continent</h2>
+        <p id="wheel-desc"></p>
+      </div>
+      <div class="wheel-box">
+        <canvas id="wheel"></canvas>
+        <div id="result-pop" class="result-pop hidden"></div>
+      </div>
+      <div class="controls">
+        <button id="btn-spin" class="btn-primary">SPIN!</button>
+        <div class="controls-row">
+          <button id="btn-auto" class="ghost">⚡ Auto-spin the rest</button>
+          <button id="btn-restart" class="ghost" title="Start this nation over">↺ Restart</button>
+        </div>
+        <label class="toggle"><input type="checkbox" id="chk-fast"> Fast spins <small>(or press Space to spin)</small></label>
+      </div>
+      <ol class="steps" id="steps"></ol>
+    </section>
+  </main>
+
+  <div id="reveal" class="reveal hidden">
+    <div class="reveal-card">
+      <div id="reveal-body"></div>
+      <div class="reveal-actions">
+        <button id="reveal-stats" class="btn-primary">📊 View full stats</button>
+        <button id="reveal-again" class="ghost">🎡 Found another nation</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="loading" class="loading">
+    <div class="globe">🌍</div>
+    <p>Charting the world…</p>
+  </div>
+  <canvas id="confetti" class="confetti"></canvas>
+
+  <script src="js/vendor/d3.min.js"></script>
+  <script src="js/vendor/topojson-client.min.js"></script>
+  <script src="js/world-data.js"></script>
+  <script src="js/generator.js"></script>
+  <script src="js/wheels.js"></script>
+  <script src="js/lore.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
