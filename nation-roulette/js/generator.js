@@ -310,8 +310,10 @@
 
   /* ---------- territory generation ---------- */
 
+  // When true (an uprising on a full continent), land owned by other nations counts as claimable.
+  let ignoreOwners = false;
   function allowedFn(c, landlocked) {
-    return j => countryId[j] >= 0 && continent[j] === c && owner[j] === 0 && (!landlocked || coastDist[j] >= LL_MIN);
+    return j => countryId[j] >= 0 && continent[j] === c && (ignoreOwners || owner[j] === 0) && (!landlocked || coastDist[j] >= LL_MIN);
   }
 
   // Connected pockets of land a new nation could still claim (8-connected,
@@ -996,6 +998,11 @@
    * opts: { continent: 1..6, region, landlocked, borderStyle: natural|straight|mixed, minArea, maxArea, seed }
    */
   function generateTerritory(opts) {
+    ignoreOwners = !!opts.ignoreOwners;
+    try { return generateTerritoryInner(opts); } finally { ignoreOwners = false; }
+  }
+
+  function generateTerritoryInner(opts) {
     const rng = mulberry32(opts.seed || (Math.random() * 2 ** 31) | 0);
     const c = opts.continent;
     const notes = [];
@@ -1072,9 +1079,84 @@
       area: info.area, coastlineKm: info.coastEdges * CELL_KM * (1.6 + rng() * 1.4),
       centroid: info.centroid, latMin: info.latMin, latMax: info.latMax,
       neighbors: info.neighbors, carved: info.carved, continent: c, borderStyle: style,
-      provinceLines: prov.lines,
+      provinceLines: prov.lines, lines,
+      contested: contestedOf(cells),
       provinces: seats.map((s, p) => ({ seat: cellLonLat(s), city: p < cityCells.length ? p : -1, area: prov.areas[p] || 0 })),
       samples: sampleCells(cells, 400),
+    };
+  }
+
+  // Cells already owned by other nations, grouped by owner slot.
+  function contestedOf(cells) {
+    const out = {};
+    for (const i of cells) if (owner[i]) (out[owner[i]] = out[owner[i]] || []).push(i);
+    return Object.keys(out).length ? out : null;
+  }
+
+  /* ---------- wars: moving land between nations ---------- */
+
+  function cellOf(lon, lat) {
+    const x = Math.min(W - 1, Math.max(0, Math.floor((lon + 180) / RES)));
+    const y = Math.min(H - 1, Math.max(0, Math.floor((90 - lat) / RES)));
+    return y * W + x;
+  }
+
+  // Unclaimed cells of a real country (the land still "held" by it).
+  function freeCellsOfCountry(id) {
+    const out = [];
+    for (let i = 0; i < N; i++) if (countryId[i] === id && owner[i] === 0 && continent[i] !== 7) out.push(i);
+    return out;
+  }
+
+  // The part of `fromCells` nearest to `towardCells`, covering `fraction` of its
+  // area, split off along a straight armistice line.
+  function frontline(fromCells, towardCells, fraction) {
+    const cen = cs => {
+      let sx = 0, sy = 0, a = 0;
+      for (const i of cs) { const y = (i / W) | 0, x = i - y * W, w = cellArea(y); sx += x * w; sy += y * w; a += w; }
+      return [sx / a, sy / a, a];
+    };
+    const [fx, fy, fArea] = cen(fromCells), [tx, ty] = cen(towardCells);
+    const cl = cosLat[Math.max(0, Math.min(H - 1, Math.round((fy + ty) / 2)))];
+    let dx = (fx - tx) * cl, dy = fy - ty;
+    const len = Math.hypot(dx, dy) || 1;
+    dx /= len; dy /= len;
+    const proj = fromCells.map(i => { const y = (i / W) | 0, x = i - y * W; return [(x - tx) * cl * dx + (y - ty) * dy, i, cellArea(y)]; })
+      .sort((a, b) => a[0] - b[0]);
+    const goal = fArea * fraction;
+    const taken = [];
+    let acc = 0, t = proj.length ? proj[0][0] : 0;
+    for (const [p, i, a] of proj) {
+      if (acc >= goal) break;
+      taken.push(i); acc += a; t = p;
+    }
+    // Armistice line: perpendicular to the attack direction, just past the last annexed cell.
+    const t2 = t + 0.5;
+    const px = tx + 0.5 + dx * t2 / cl, py = ty + 0.5 + dy * t2;
+    // Long enough to cross the whole front, short enough not to touch unrelated borders.
+    const ux = -dy / cl, uy = dx, L = Math.sqrt(fArea / (CELL_KM * CELL_KM * cl)) * 1.3 + 8;
+    return { cells: taken, area: acc, line: [[px - ux * L, py - uy * L], [px + ux * L, py + uy * L]] };
+  }
+
+  // Recompute borders, provinces and geography after a nation's land changed.
+  function rebuild(cells, style, lines, seatLonLats) {
+    if (!cells.length) return null;
+    const coastal = cells.some(i => coastDist[i] === 1);
+    const geomStyle = style === 'natural' && lines.length ? 'mixed' : style;
+    const set = new Set(cells);
+    const seatIdx = [];
+    const keptSeats = [];
+    seatLonLats.forEach((ll, k) => {
+      const i = cellOf(ll[0], ll[1]);
+      if (set.has(i) && !seatIdx.includes(i)) { seatIdx.push(i); keptSeats.push(k); }
+    });
+    const prov = seatIdx.length >= 2 ? makeProvinces(cells, seatIdx, style, mulberry32(cells.length)) : { lines: null, areas: [areaOf(cells)] };
+    const info = analyze(cells);
+    delete info.depth;
+    return {
+      geometry: toGeometry(cells, coastal, geomStyle, lines),
+      provinceLines: prov.lines, provinceAreas: prov.areas, keptSeats,
+      area: info.area, landlocked: !coastal, coastlineKm: info.coastEdges * CELL_KM * 2.2, centroid: info.centroid,
     };
   }
 
@@ -1109,6 +1191,8 @@
   global.WorldGen = {
     init, generateTerritory, claim, release, clearOwners, encodeCells, decodeCells, countryInfo,
     analyzeCells(cells) { const a = analyze(cells); delete a.depth; return a; },
+    cellOf, freeCellsOfCountry, frontline, rebuild, areaOf,
+    ownerOf: i => owner[i],
     get features() { return features; },
     CONTINENTS, mulberry32,
   };

@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  const { WHEELS, Wheel, Sound, Lore, Realism } = window.NR;
+  const { WHEELS, Wheel, Sound, Lore, Realism, War } = window.NR;
   const STORE_KEY = 'nation-roulette-v1';
   const $ = id => document.getElementById(id);
   const sleep = ms => new Promise(res => setTimeout(res, ms));
@@ -35,6 +35,7 @@
   const state = {
     step: 0, results: {}, territory: null, busy: false, auto: false,
     nations: [], nextSlot: 1, drawerOpen: false, flagFill: true, tab: 'overview', rankKey: 'gdp',
+    fallen: [], events: [],
   };
 
   /* ================= map ================= */
@@ -325,7 +326,7 @@
     state.step++;
     if (state.step >= WHEELS.length) {
       $('progress-bar').style.width = '100%';
-      finalize();
+      await finalize();
     } else loadWheel();
     setBusy(false);
   }
@@ -356,6 +357,16 @@
       minArea: r.size.min, maxArea: r.size.max, seed: (Math.random() * 2 ** 31) | 0,
     };
     let terr = WorldGen.generateTerritory(Object.assign({ continent: r.continent.value }, base));
+    // No room left: the people rise up inside existing nations instead (a war of independence follows).
+    if ((!terr || terr.area < terr.targetArea * 0.35) && state.nations.some(n => n.terr.continent === r.continent.value)) {
+      const up = WorldGen.generateTerritory(Object.assign({ continent: r.continent.value, ignoreOwners: true }, base));
+      if (up && up.contested) {
+        const names = Object.keys(up.contested).map(sl => state.nations.find(n => n.slot === +sl)).filter(Boolean).map(n => n.stats.root);
+        up.uprising = true;
+        up.notes = [`No free land left in ${WorldGen.CONTINENTS[r.continent.value]} — your people rise up inside ${names.join(' and ')}! A war of independence is coming.`];
+        terr = up;
+      }
+    }
     if (!terr) {
       // Continent is full: find the nearest one with space left.
       for (const c of [2, 1, 4, 5, 3, 6]) {
@@ -374,7 +385,7 @@
     toast(`📍 Territory claimed: <b>${fmtArea(terr.area)}</b>, ${ll}.` + terr.notes.map(n => `<br><small>${esc(n)}</small>`).join(''), 5000);
   }
 
-  function finalize() {
+  async function finalize() {
     const terr = state.territory;
     if (!terr) { resetSpins(); return; }
     const seed = (Math.random() * 2 ** 31) | 0;
@@ -385,6 +396,7 @@
       color: `hsl(${hue}, ${62 + Math.floor(Math.random() * 20)}%, ${48 + Math.floor(Math.random() * 10)}%)`,
       geometry: terr.geometry,
       provinceLines: terr.provinceLines,
+      style: terr.borderStyle, lines: terr.lines || [],
       rle: WorldGen.encodeCells(terr.cells),
       cells: terr.cells,
       results: Object.fromEntries(Object.entries(state.results).map(([key, v]) => [key, v.label])),
@@ -392,6 +404,21 @@
       stats,
       created: Date.now(),
     };
+    // An uprising starts by seizing its land from the current owners.
+    const defenders = [];
+    if (terr.uprising) {
+      for (const sl of Object.keys(terr.contested)) {
+        const d = state.nations.find(n => n.slot === +sl);
+        if (!d) continue;
+        const set = new Set(terr.contested[sl]);
+        const before = d.stats.area;
+        d.cells = d.cells.filter(i => !set.has(i));
+        d.stats.population = Math.round(d.stats.population * Math.max(0, 1 - WorldGen.areaOf(terr.contested[sl]) / before));
+        d.stats.cities = d.stats.cities.filter(c => !set.has(WorldGen.cellOf(c.lon, c.lat)));
+        if (d.stats.provinces) d.stats.provinces = d.stats.provinces.filter(p => !set.has(WorldGen.cellOf(p.lon, p.lat)));
+        if (War.refresh(d)) defenders.push(d); else fallNation(d, nation.stats.root);
+      }
+    }
     WorldGen.claim(terr.cells, nation.slot);
     state.nations.push(nation);
     state.territory = null;
@@ -399,9 +426,100 @@
     renderNations();
     save();
     updateCount();
-    Sound.fanfare();
-    confetti();
-    showReveal(nation);
+
+    let alive = true;
+    const fast = state.auto || $('chk-fast').checked;
+    if (terr.uprising) {
+      for (const d of defenders) {
+        if (!state.nations.includes(d)) continue;
+        alive = await fightWar(nation, War.nationSide(d), 'independence', fast);
+        if (!alive) break;
+      }
+    } else if (terr.area < terr.targetArea * 0.6) {
+      const rivals = WorldGen.analyzeCells(nation.cells).neighbors.filter(nb => nb.type === 'nation' && nb.shared >= 3)
+        .map(nb => state.nations.find(n => n.slot === nb.id)).filter(Boolean);
+      for (const d of rivals) {
+        if (!state.nations.includes(d)) continue;
+        const res = await fightWar(nation, War.nationSide(d), 'offer', fast);
+        if (res === null) break;
+        alive = res;
+        if (!alive) break;
+      }
+    }
+    if (alive) {
+      Sound.fanfare();
+      confetti();
+      showReveal(nation);
+    } else showFallenReveal(nation);
+  }
+
+  // Runs one war on the war screen and applies it. Returns false if the attacker fell, null if declined.
+  async function fightWar(attacker, defenderSide, mode, fast) {
+    const A = War.nationSide(attacker);
+    const res = await War.run(A, defenderSide, { mode, fast });
+    if (!res) return null;
+    const out = War.apply(A, defenderSide, res.type);
+    state.events.push(out.headline);
+    state.events = state.events.slice(-20);
+    for (const side of [A, defenderSide]) if (out.destroyed === side && side.kind === 'nation') fallNation(side.nation, side === A ? defenderSide.name : A.name);
+    renderNations();
+    flashLand(out.moved);
+    save();
+    updateCount();
+    await War.showOutcome(`${out.text}<small>Battles won: ${res.wins} of 5 · pre-war odds ${Math.round(res.p * 100)}%</small>`, fast);
+    return out.destroyed !== A;
+  }
+
+  function fallNation(n, by) {
+    const idx = state.nations.indexOf(n);
+    if (idx >= 0) state.nations.splice(idx, 1);
+    WorldGen.release(n.cells.filter(i => WorldGen.ownerOf(i) === n.slot));
+    state.fallen.push({ name: n.stats.name, root: n.stats.root, flag: n.stats.flag, by });
+    state.fallen = state.fallen.slice(-30);
+  }
+
+  function flashLand(cells) {
+    if (!cells || !cells.length) return;
+    const r = WorldGen.rebuild(cells, 'natural', [], []);
+    if (!r) return;
+    const p = pendingG.append('path').attr('class', 'annexed-flash').attr('d', path(r.geometry));
+    setTimeout(() => p.remove(), 3200);
+  }
+
+  function showFallenReveal(n) {
+    const s = n.stats;
+    $('reveal-body').innerHTML = `
+      <div class="flag big fallen">${s.flag}</div>
+      <p class="eyebrow">A nation has fallen</p>
+      <h2>${esc(s.name)}</h2>
+      <p class="motto">Born and lost in the same breath. History will remember ${esc(s.root)}.</p>`;
+    $('reveal').classList.remove('hidden');
+    $('reveal').dataset.slot = '';
+  }
+
+  function showWarPicker(n) {
+    const nbs = WorldGen.analyzeCells(n.cells).neighbors.filter(nb => nb.shared >= 2);
+    const items = nbs.map(nb => {
+      let side;
+      if (nb.type === 'nation') { const o = state.nations.find(x => x.slot === nb.id); if (!o) return ''; side = War.nationSide(o); }
+      else { const free = WorldGen.freeCellsOfCountry(nb.id); if (!free.length) return ''; side = War.countrySide(nb.id); }
+      const p = War.odds(War.nationSide(n), side);
+      return `<li data-target="${nb.type}:${nb.id}"><span class="flag sm">${side.flag}</span><span class="nl-text"><b>${esc(side.name)}</b><small>${side.kind === 'nation' ? 'Your nation' : 'Real-world country'} · win chance ${Math.round(p * 100)}%</small></span><span class="wp ${p >= 0.5 ? 'good' : 'bad'}">${Math.round(p * 100)}%</span></li>`;
+    }).join('');
+    openDrawer(`
+      <div class="nation-head real"><h2>⚔️ Choose a target</h2><div class="chips"><span>${esc(n.stats.root)}'s neighbours</span></div></div>
+      ${items ? `<ul class="nation-list war-targets" data-attacker="${n.slot}">${items}</ul>` : '<p class="muted pad">Nobody to fight — this nation has no land neighbours.</p>'}
+      <div class="drawer-actions"><button data-nation="${n.slot}">← Back to ${esc(n.stats.root)}</button></div>`);
+  }
+
+  async function manualWar(n, target) {
+    const [type, id] = target.split(':');
+    let side;
+    if (type === 'nation') { const o = state.nations.find(x => x.slot === +id); if (!o) return; side = War.nationSide(o); }
+    else side = War.countrySide(+id);
+    closeDrawer();
+    const alive = await fightWar(n, side, 'manual', $('chk-fast').checked);
+    if (alive) showNation(n); else zoomHome();
   }
 
   function resetSpins() {
@@ -564,6 +682,7 @@
         <div class="chips">
           <span>${esc(WorldGen.CONTINENTS[t.continent])}</span><span>${esc(r.region)}</span>
           <span>${t.landlocked ? 'Landlocked' : 'Coastal'}</span><span>${sizeChip(n)}</span>
+          ${s.puppetOf ? `<span class="puppet">⛓ Puppet of ${esc(s.puppetOf)}</span>` : ''}
         </div>
       </div>
       <nav class="tabs">${tabs}</nav>
@@ -623,7 +742,8 @@
           ${row('Founded', `${esc(s.founded)} <small>(${esc(r.founded)})</small>`)}
           ${row('National day', esc(s.holiday))}
         </section>
-        ${s.parliament ? `<section><h3>Legislature</h3>${hemicycle(s.parliament)}</section>` : ''}`)}
+        ${s.parliament ? `<section><h3>Legislature</h3>${hemicycle(s.parliament)}</section>` : ''}
+        ${s.wars && s.wars.length ? `<section><h3>War record</h3><ul class="war-log">${s.wars.slice().reverse().map(w => `<li class="${w.result === 'decisive' || w.result === 'win' ? 'won' : 'lost'}">${w.attacker ? 'Attacked' : 'Defended against'} ${esc(w.enemy)} — <b>${({ decisive: 'decisive victory', win: 'victory', loss: 'defeat', crushing: 'crushing defeat' })[w.result]}</b></li>`).join('')}</ul></section>` : ''}`)}
       ${pane('economy', `
         <div class="tiles">
           ${tile('GDP', '$' + fmtShort(s.gdp))}
@@ -658,8 +778,9 @@
           ${row('Doctrine', esc(r.doctrine))}
         </section>`)}
       <div class="drawer-actions">
-        <button data-act="zoom" data-slot="${n.slot}">🔍 Zoom to nation</button>
-        <button data-act="delete" data-slot="${n.slot}" class="danger">🗑️ Dissolve</button>
+        <button data-act="zoom" data-slot="${n.slot}">🔍 Zoom</button>
+        <button data-act="war" data-slot="${n.slot}" class="btn-war">⚔️ Declare war</button>
+        <button data-act="delete" data-slot="${n.slot}" class="danger">🗑️</button>
       </div>`);
     zoomToGeometry(n.geometry, 900);
   }
@@ -692,7 +813,9 @@
       </li>`).join('');
     openDrawer(`
       <div class="nation-head real"><h2>My Nations</h2><div class="chips"><span>${state.nations.length} founded</span></div></div>
-      ${list ? `<ul class="nation-list">${list}</ul>` : '<p class="muted pad">No nations yet. Spin the wheels to found your first!</p>'}`);
+      ${list ? `<ul class="nation-list">${list}</ul>` : '<p class="muted pad">No nations yet. Spin the wheels to found your first!</p>'}
+      ${state.fallen.length ? `<section><h3>🪦 Fallen nations</h3><ul class="nation-list fallen-list">${state.fallen.slice().reverse().map(f => `
+        <li><span class="flag sm fallen">${f.flag}</span><span class="nl-text"><b>${esc(f.name)}</b><small>Conquered by ${esc(f.by)}</small></span></li>`).join('')}</ul></section>` : ''}`);
   }
 
   const RANK_COLS = [
@@ -775,8 +898,9 @@
   }
 
   function updateTicker() {
+    const wars = state.events.slice(-4).reverse().map(h => '⚔️ ' + h);
     const items = state.nations.length
-      ? state.nations.flatMap(n => headlinesFor(n).sort(() => Math.random() - 0.5).slice(0, 3)).sort(() => Math.random() - 0.5).slice(0, 10)
+      ? wars.concat(state.nations.flatMap(n => headlinesFor(n).sort(() => Math.random() - 0.5).slice(0, 3)).sort(() => Math.random() - 0.5).slice(0, 10))
       : ['Cartographers on standby as the world awaits a new nation', 'Spin the wheels to make history', 'Diplomats warn: new borders could appear anywhere, anytime'];
     const el = $('ticker-text');
     el.innerHTML = items.map(t => `<span>${esc(t)}</span>`).join('<i>◆</i>');
@@ -793,9 +917,10 @@
     try {
       const data = state.nations.map(n => ({
         slot: n.slot, color: n.color, geometry: n.geometry, provinceLines: n.provinceLines, rle: n.rle, results: n.results,
+        style: n.style, lines: n.lines,
         terr: n.terr, stats: n.stats, created: n.created,
       }));
-      localStorage.setItem(STORE_KEY, JSON.stringify({ nextSlot: state.nextSlot, nations: data }));
+      localStorage.setItem(STORE_KEY, JSON.stringify({ nextSlot: state.nextSlot, nations: data, fallen: state.fallen, events: state.events }));
     } catch (e) { /* storage unavailable or full: the game still works for this session */ }
   }
 
@@ -805,6 +930,8 @@
       if (!raw) return;
       const data = JSON.parse(raw);
       state.nextSlot = data.nextSlot || 1;
+      state.fallen = data.fallen || [];
+      state.events = data.events || [];
       state.nations = (data.nations || []).map(n => {
         n.cells = WorldGen.decodeCells(n.rle);
         WorldGen.claim(n.cells, n.slot);
@@ -817,6 +944,8 @@
     if (!confirm('Reset the world? All your nations will be dissolved.')) return;
     state.nations = [];
     state.nextSlot = 1;
+    state.fallen = [];
+    state.events = [];
     WorldGen.clearOwners();
     try { localStorage.removeItem(STORE_KEY); } catch (e) { /* ignore */ }
     renderNations();
@@ -887,11 +1016,18 @@
       }
       const rk = ev.target.closest('[data-rank]');
       if (rk) { state.rankKey = rk.dataset.rank; showRankings(); return; }
+      const tgt = ev.target.closest('[data-target]');
+      if (tgt) {
+        const n = state.nations.find(x => x.slot === +tgt.closest('[data-attacker]').dataset.attacker);
+        if (n) manualWar(n, tgt.dataset.target);
+        return;
+      }
       const a = ev.target.closest('[data-nation],[data-country],[data-act]');
       if (!a) return;
       ev.preventDefault();
       if (a.dataset.act === 'zoom') { const n = state.nations.find(x => x.slot === +a.dataset.slot); if (n) zoomToGeometry(n.geometry); }
       else if (a.dataset.act === 'delete') deleteNation(+a.dataset.slot);
+      else if (a.dataset.act === 'war') { const n = state.nations.find(x => x.slot === +a.dataset.slot); if (n) showWarPicker(n); }
       else if (a.dataset.nation) { const n = state.nations.find(x => x.slot === +a.dataset.nation); if (n) showNation(n); }
       else if (a.dataset.country) showCountry(+a.dataset.country);
     });
@@ -904,7 +1040,7 @@
 
     $('reveal-stats').addEventListener('click', () => {
       $('reveal').classList.add('hidden');
-      const n = state.nations.find(x => x.slot === +$('reveal').dataset.slot);
+      const n = $('reveal').dataset.slot ? state.nations.find(x => x.slot === +$('reveal').dataset.slot) : null;
       state.tab = 'overview';
       if (n) showNation(n);
       resetSpins();

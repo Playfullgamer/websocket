@@ -171,5 +171,21 @@
     };
   }
 
-  global.NR = Object.assign(global.NR || {}, { Realism: { profile, cultureRegion, weightsFor, describe, compare } });
+  // Approximate nuclear arsenals (2024 public estimates).
+  const NUKES = {
+    'Russia': 5580, 'United States of America': 5044, 'China': 500, 'France': 290, 'United Kingdom': 225,
+    'India': 172, 'Pakistan': 170, 'Israel': 90, 'North Korea': 50,
+  };
+  const norm = n => n.replace(/^the /, '').replace('United States of America', 'United States').replace('Dem. Rep. Congo', 'DR Congo');
+
+  // War-relevant figures for a real country (from the reference table when we have it).
+  function realStats(name, areaKm2) {
+    const row = REAL.find(r => norm(r[0]) === norm(name));
+    const population = row ? row[1] * 1e6 : Math.max(2e4, areaKm2 * 35);
+    const gdp = row ? row[2] * 1e9 : population * 7000;
+    const power = gdp > 3e12 ? 5 : gdp > 8e11 ? 4 : gdp > 2e11 ? 3 : gdp > 3e10 ? 2 : 1;
+    return { population, gdp, personnel: population * 0.004, power, warheads: NUKES[name] || 0, stab: 3, terrain: 'Plains', hdi: row ? row[4] : 0.7 };
+  }
+
+  global.NR = Object.assign(global.NR || {}, { Realism: { profile, cultureRegion, weightsFor, describe, compare, realStats } });
 })(window);

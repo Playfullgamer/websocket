@@ -38,6 +38,22 @@ Once your land is drawn, the **terrain**, **religion** and **population density*
 
 Slice sizes on the wheel show the odds, and every option stays possible.
 
+## Wars ⚔️
+
+When land runs out, nations fight for it.
+
+- **Boxed in:** if your new nation spawns squeezed by your other nations, you can **declare war** on them or **accept your borders**.
+- **No free land on the continent:** your people **rise up inside an existing nation** and fight a **war of independence** for that land.
+- **Declare war yourself:** the ⚔️ Declare war button in a nation's panel attacks any neighbor, including real countries (which use real population, GDP and nuclear figures).
+- **The odds** come from army size, military power, GDP and stability. Defenders get a home bonus, which is bigger in mountains, jungle and canyons, and nuclear weapons deter attackers that have none.
+- **Each war is five battles,** named after real cities and provinces:
+  - 4–5 wins: decisive victory, a big annexation (or the whole enemy if little is left)
+  - 3 wins: victory, a slice of land
+  - 2 wins: defeat, land is ceded
+  - 0–1 wins: crushing defeat, the nation is destroyed or becomes a **puppet state**
+- **Land moves along a straight armistice line.** Borders, provinces, captured cities, population, GDP and troop losses all update.
+- **Wars are remembered:** the Politics tab has a war record, My Nations lists fallen nations, and war headlines appear in the news ticker.
+
 ## The map
 
 - The world map is Natural Earth 1:50m data. Scroll or pinch to zoom, and drag to pan.
@@ -95,6 +111,7 @@ Your nations are saved in your browser (localStorage). **My Nations** lists them
 | `js/generator.js` | Rasterises the world, picks a location, grows the territory, builds the borders and provinces |
 | `js/wheels.js` | Wheel definitions, the spinning wheel, sound effects |
 | `js/lore.js` | Names, flags, statistics and chart data |
+| `js/war.js` | War odds, battles, annexation, puppets and the war screen |
 | `js/realism.js` | Biome zones and regional odds for the wheels, and reference figures for real countries |
 | `js/main.js` | Map rendering, game flow, stats panels, saving |
 | `js/world-data.js` | Natural Earth 1:50m countries (via `world-atlas`) |
