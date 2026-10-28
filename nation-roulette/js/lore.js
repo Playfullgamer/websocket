@@ -401,8 +401,18 @@
 
   /* ---------- climate + stats ---------- */
 
-  function climateOf(lat, landlocked, terrain) {
+  function climateOf(lat, landlocked, terrain, prof) {
     const a = Math.abs(lat);
+    if (prof) {
+      if (prof.polar > 0.5) return pick(['Tundra', 'Polar']);
+      if (prof.desert > 0.45) return a < 33 ? 'Hot desert' : 'Cold desert';
+      if (prof.rainforest > 0.45) return 'Tropical rainforest';
+      if (prof.savanna > 0.45) return 'Tropical savanna';
+      if (prof.steppe > 0.45) return 'Cold semi-arid';
+      if (prof.mountain > 0.5) return a < 25 ? 'Subtropical highland' : 'Alpine';
+    }
+    if (terrain === 'Tundra') return a > 50 ? 'Tundra' : 'Alpine tundra';
+    if (terrain === 'Savanna') return 'Tropical savanna';
     if (terrain === 'Desert') return a < 35 ? 'Hot desert' : 'Cold desert';
     if (terrain === 'Jungle' && a < 25) return 'Tropical rainforest';
     if (a < 8) return landlocked ? 'Tropical monsoon' : 'Tropical rainforest';
@@ -440,14 +450,24 @@
     return ({
       'Mountains': [3500, 8200], 'Highlands': [2200, 4800], 'Rolling Hills': [700, 1900], 'Plains': [150, 900],
       'Wetlands': [40, 400], 'Desert': [600, 3200], 'Jungle': [400, 2500], 'Dense Forest': [500, 2200], 'Steppe': [400, 1800],
-      'Canyons': [1500, 3600],
+      'Canyons': [1500, 3600], 'Tundra': [200, 1500], 'Savanna': [300, 1600],
     })[terrain] || [300, 2000];
   }
 
   function fmtYear(y) { return y < 0 ? `${-y} BC` : y < 1000 ? `${y} AD` : String(y); }
 
+  let usedNames = new Set();
+  // Keeps generated place names unique within one nation.
+  function unique(gen) {
+    let n = gen();
+    for (let t = 0; t < 12 && usedNames.has(n); t++) n = gen();
+    usedNames.add(n);
+    return n;
+  }
+
   function build(results, terr, seed) {
     rng = WorldGen.mulberry32(seed);
+    usedNames = new Set();
     const r = results;
     const flavor = WorldGen.CONTINENTS[terr.continent];
     const root = makeRoot(flavor);
@@ -480,11 +500,15 @@
     const personnel = power === 0 ? Math.round(population * 0.0002) : Math.round(population * milRate * between(0.7, 1.3));
     const warheads = power === 6 ? Math.round(logBetween(15, 900)) : power === 5 && R() < 0.4 ? Math.round(logBetween(5, 120)) : 0;
 
-    const capitalName = cityName(flavor, root);
+    const capitalName = unique(() => cityName(flavor, root));
+    // City sizes follow a Zipf-like rank curve; the capital is usually (not always) the largest.
+    const largest = population * urban / 100 * between(0.15, 0.45);
+    const ranks = terr.cities.map((_, k) => k + 1);
+    if (ranks.length > 1 && R() < 0.15) { ranks[0] = 2; ranks[1] = 1; }
     const placed = terr.cities.map((pt, k) => {
-      const name = k === 0 ? capitalName : cityName(flavor, root);
-      const share = k === 0 ? between(0.08, 0.3) : between(0.02, 0.12) / k;
-      return { name, lon: pt[0], lat: pt[1], pop: Math.max(500, Math.round(population * share)), capital: k === 0 };
+      const name = k === 0 ? capitalName : unique(() => cityName(flavor, root));
+      const pop = largest / Math.pow(ranks[k], between(0.95, 1.2));
+      return { name, lon: pt[0], lat: pt[1], pop: Math.max(500, Math.round(pop)), capital: k === 0 };
     });
     const cities = [placed[0], ...placed.slice(1).sort((a, b) => b.pop - a.pop)];
 
@@ -492,7 +516,9 @@
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     const holiday = `${Math.ceil(R() * 28)} ${pick(months)}`;
     const capLat = cities[0].lat, capLon = cities[0].lon;
-    const climate = climateOf(capLat, terr.landlocked, r.terrain.label);
+    const prof = terr.samples ? NR.Realism.profile(terr.samples) : null;
+    const climate = climateOf(capLat, terr.landlocked, r.terrain.label, prof);
+    const region = NR.Realism.cultureRegion(terr.continent, terr.centroid ? terr.centroid[0] : capLon, terr.centroid ? terr.centroid[1] : capLat);
     const [h0, h1] = terrainHeights(r.terrain.label);
     const highest = Math.round(between(h0, h1) * (area < 20000 ? 0.5 : 1));
     const secondary = [];
@@ -510,7 +536,9 @@
     const tld = '.' + (root.charAt(0) + root.slice(1).replace(/[aeiou]/g, '').charAt(0) || root.slice(0, 2)).toLowerCase();
 
     const flag = makeFlag(r, !terr.landlocked);
-    return {
+    const language = languageOf(root, demonym);
+    const extra = buildCharts(r, terr, { root, flavor, population, area, hdi, gdp, freedom, happiness, stab, power, founded, language, placed, region, urban });
+    return Object.assign(extra, {
       root, name: formalName(root, r), demonym, language: languageOf(root, demonym), flag: flag.svg, flagMeaning: flag.meaning, motto,
       capital: capitalName, cities, leader: `${leaderTitle} ${personName(flavor)}`,
       party: (r.government.label === 'Direct Democracy' || r.ideology.label === 'Anarchism') ? 'None (popular assemblies)' :
@@ -526,7 +554,134 @@
       river: terr.area > 5000 ? `${placeRoot(flavor)} River` : null,
       riverKm: Math.round(Math.sqrt(area) * between(0.9, 2.6)),
       secondary,
-    };
+    });
+  }
+
+  /* ---------- data for the stats-panel charts ---------- */
+
+  const RELIGION_NAME = { 'Secular': 'Non-religious', 'State Atheism': 'Atheist', 'Pluralism': 'Interfaith' };
+  const REGION_FAITHS = {
+    europe: ['Christianity', 'Non-religious', 'Islam', 'Judaism'], northAfrica: ['Islam', 'Christianity', 'Non-religious'],
+    subsaharan: ['Christianity', 'Islam', 'Folk Religion'], middleEast: ['Islam', 'Christianity', 'Judaism'],
+    centralAsia: ['Islam', 'Non-religious', 'Christianity'], southAsia: ['Hinduism', 'Islam', 'Buddhism', 'Christianity'],
+    eastAsia: ['Folk Religion', 'Buddhism', 'Non-religious', 'Christianity'], seAsia: ['Buddhism', 'Islam', 'Christianity', 'Folk Religion'],
+    siberia: ['Christianity', 'Non-religious', 'Buddhism'], northAmerica: ['Christianity', 'Non-religious', 'Judaism'],
+    latinAmerica: ['Christianity', 'Non-religious', 'Folk Religion'], oceania: ['Christianity', 'Non-religious', 'Folk Religion'],
+  };
+  const PROVINCE_TERMS = {
+    Europe: ['Province', 'County', 'Oblast', 'Canton', 'Region'], Asia: ['Province', 'Prefecture', 'Oblast', 'Governorate'],
+    Africa: ['Region', 'Province', 'District', 'Governorate'], 'North America': ['State', 'Territory', 'Province'],
+    'South America': ['Department', 'State', 'Province'], Oceania: ['District', 'Province', 'Division'],
+  };
+
+  // Split 100% into named shares (largest first), last bucket "Other".
+  function shares(main, mainShare, others) {
+    const out = [{ name: main, pct: mainShare }];
+    let rest = 100 - mainShare;
+    others.forEach((o, k) => {
+      if (rest < 1.5) return;
+      const take = k === others.length - 1 ? rest * between(0.45, 0.8) : rest * between(0.35, 0.65);
+      out.push({ name: o, pct: take });
+      rest -= take;
+    });
+    if (rest >= 0.5) out.push({ name: 'Other', pct: rest });
+    return out.map(x => ({ name: x.name, pct: +x.pct.toFixed(1) }));
+  }
+
+  function buildCharts(r, terr, c) {
+    const out = {};
+    // Religion mix
+    const mainRel = RELIGION_NAME[r.religion.label] || r.religion.label;
+    const faiths = (REGION_FAITHS[c.region] || ['Christianity', 'Islam', 'Non-religious']).filter(f => f !== mainRel);
+    const relShare = r.government.label === 'Theocratic State' ? between(80, 97) : r.religion.label === 'Pluralism' ? between(22, 34) :
+      r.religion.label === 'Secular' ? between(40, 70) : between(55, 92);
+    out.religions = shares(mainRel, relShare, faiths.slice(0, 3));
+    // Languages
+    const minority = [makeRoot(c.flavor), makeRoot(c.flavor)].map(x => languageOf(x, demonymOf(x)));
+    out.languages = shares(c.language, between(55, 96), minority);
+    // Economic sectors
+    const rv = r.resource.label, ev = r.economy.label;
+    const agri = clamp(46 - (c.hdi - 0.3) * 62 + (ev === 'Agrarian' ? 18 : 0) + (['Grain', 'Coffee & Spices', 'Fisheries', 'Timber'].includes(rv) ? 5 : 0) + between(-3, 3), 1.2, 62);
+    const ind = clamp(22 + (ev === 'Industrial Powerhouse' ? 15 : 0) + (ev === 'Resource Economy' ? 12 : 0) +
+      (['Oil', 'Natural Gas', 'Iron Ore', 'Coal', 'Copper', 'Uranium', 'Lithium', 'Rare Earths', 'Gold', 'Diamonds'].includes(rv) ? 9 : 0) -
+      (['Service Economy', 'Tax Haven'].includes(ev) ? 9 : 0) + between(-4, 4), 7, 60);
+    out.sectors = [{ name: 'Agriculture', pct: +agri.toFixed(1) }, { name: 'Industry', pct: +ind.toFixed(1) },
+      { name: 'Services', pct: +Math.max(5, 100 - agri - ind).toFixed(1) }];
+    // Armed forces
+    if (c.power === 0) out.forces = [{ name: 'Gendarmerie', pct: 100 }];
+    else {
+      const navy = terr.landlocked ? between(0, 2.5) : between(9, 26);
+      const air = between(10, 24);
+      const strat = c.power === 6 ? between(3, 8) : 0;
+      out.forces = [{ name: 'Army', pct: 100 - navy - air - strat }, { name: terr.landlocked ? 'River flotilla' : 'Navy', pct: navy },
+        { name: 'Air force', pct: air }].concat(strat ? [{ name: 'Strategic forces', pct: strat }] : [])
+        .filter(f => f.pct >= 0.5).map(f => ({ name: f.name, pct: +f.pct.toFixed(1) }));
+    }
+    // Legislature: the cube-root law of assembly size
+    const seats = Math.round(clamp(Math.cbrt(c.population) * between(0.8, 1.15), 15, 700));
+    const gov = r.government.label;
+    const otherParties = Object.keys(PARTY).filter(k => k !== r.ideology.label).sort(() => R() - 0.5).slice(0, 4).map(k => PARTY[k][0]);
+    const ruling = pick(PARTY[r.ideology.label] || ['Unity Party']);
+    let parl;
+    if (gov === 'Direct Democracy') parl = null;
+    else if (gov === 'One-Party State') parl = [[ruling, 0.9], ['Approved independents', 0.1]];
+    else if (gov === 'Military Junta') parl = [['Appointed officers', 0.8], ['Civilian advisers', 0.2]];
+    else if (gov === 'Absolute Monarchy') parl = [['Royal appointees', 0.75], ['Noble houses', 0.25]];
+    else if (gov === 'Theocratic State') parl = [['Clerical council', 0.7], [ruling, 0.3]];
+    else if (gov === 'Corporate State') parl = [['Majority shareholders', 0.55], ['Board of directors', 0.3], ['Minority shareholders', 0.15]];
+    else {
+      const lead = between(0.3, 0.42) + c.stab * 0.035;
+      const n = 2 + Math.floor(R() * 3);
+      parl = [[ruling, lead]];
+      let rest = 1 - lead - 0.03;
+      otherParties.slice(0, n).forEach((pname, k) => {
+        const take = k === n - 1 ? rest : rest * between(0.35, 0.6);
+        parl.push([pname, take]); rest -= take;
+      });
+      parl.push(['Independents', 0.03]);
+    }
+    if (parl) {
+      let left = seats;
+      out.parliament = { seats, parties: parl.map(([name, f], k) => {
+        const n = k === parl.length - 1 ? left : Math.min(left, Math.round(seats * f));
+        left -= n;
+        return { name, seats: n };
+      }).filter(p2 => p2.seats > 0) };
+    } else out.parliament = { seats: 0, parties: [], assembly: true };
+    // Population history
+    const now = 2026, start = Math.max(c.founded, 1800);
+    const g = clamp(0.034 - c.hdi * 0.028 + between(-0.004, 0.004), 0.002, 0.032);
+    const dip = c.stab <= 1 && now - start > 20 ? Math.round(between(start + 10, now - 3)) : null;
+    const steps = Math.min(12, Math.max(1, Math.round((now - start) / 10)));
+    const hist = [];
+    for (let k = 0; k <= steps; k++) {
+      const year = Math.round(start + (now - start) * k / steps);
+      const back = (now - year);
+      const rate = year < 1950 ? g * 0.45 : g;
+      let pop = c.population * Math.exp(-rate * Math.min(back, Math.max(0, now - 1950)) - (year < 1950 ? g * 0.45 * (1950 - year) : 0));
+      if (dip && year >= dip && year < dip + 12) pop *= 0.9;
+      hist.push({ year, pop: Math.round(pop) });
+    }
+    out.popHistory = start >= now ? [{ year: now, pop: c.population }] : hist;
+    // National profile, all 0..1
+    out.profile = [
+      ['Economy', clamp((Math.log10(Math.max(1, c.gdp)) - 8) / 5.5, 0, 1)], ['Military', c.power / 6],
+      ['Freedom', c.freedom / 100], ['Stability', c.stab / 5], ['Development', clamp((c.hdi - 0.3) / 0.67, 0, 1)],
+      ['Happiness', c.happiness / 10], ['Size', clamp((Math.log10(c.area) - 3) / 4, 0, 1)],
+    ].map(([name, v]) => ({ name, v: +v.toFixed(3) }));
+    // Provinces
+    if (terr.provinces && terr.provinces.length > 1) {
+      const term = r.government.label === 'Federal Republic' ? 'State' : pick(PROVINCE_TERMS[c.flavor] || ['Province']);
+      const weights = terr.provinces.map((p, k) => Math.pow(Math.max(1, p.area), 0.6) * (p.city === 0 ? 2.2 : p.city > 0 ? 1.4 : 1));
+      const total = weights.reduce((a, b) => a + b, 0);
+      out.provinces = terr.provinces.map((p, k) => {
+        const seatName = p.city >= 0 ? c.placed[p.city].name : unique(() => cityName(c.flavor, c.root));
+        const fromSeat = `${seatName.replace(/^(New|Port|San) /, '').split(' ')[0]} ${term}`;
+        const nm = unique(() => (R() < 0.55 || usedNames.has(fromSeat)) ? `${placeRoot(c.flavor)} ${term}` : fromSeat);
+        return { name: nm, seat: seatName, capital: p.city === 0, area: Math.round(p.area), pop: Math.round(c.population * weights[k] / total), lon: p.seat[0], lat: p.seat[1] };
+      });
+    }
+    return out;
   }
 
   global.NR = Object.assign(global.NR || {}, { Lore: { build } });

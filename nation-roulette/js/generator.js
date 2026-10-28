@@ -790,7 +790,13 @@
     }
     if (capital == null) capital = (deep.length ? deep : cells)[Math.floor(rng() * (deep.length || cells.length))];
     pts.push(capital);
-    for (let k = 1; k < count; k++) {
+    return spreadPoints(cells, pts, count, rng);
+  }
+
+  // Farthest-point sampling (with some randomness) to add points until `count`.
+  function spreadPoints(cells, start, count, rng) {
+    const pts = start.slice();
+    for (let k = pts.length; k < count; k++) {
       let best = -1, bestScore = -1;
       for (let t = 0; t < 60; t++) {
         const i = cells[Math.floor(rng() * cells.length)];
@@ -805,7 +811,145 @@
       }
       if (best >= 0 && bestScore > 1.2) pts.push(best);
     }
-    return pts.map(i => { const y = (i / W) | 0, x = i - y * W; return [+lonOf(x).toFixed(3), +latOf(y).toFixed(3)]; });
+    return pts;
+  }
+
+  const cellLonLat = i => { const y = (i / W) | 0, x = i - y * W; return [+lonOf(x).toFixed(3), +latOf(y).toFixed(3)]; };
+
+  /* ---------- provinces ---------- */
+
+  function chaikinOpen(pts, iterations) {
+    for (let it = 0; it < iterations && pts.length > 2; it++) {
+      const next = [pts[0]];
+      for (let k = 0; k < pts.length - 1; k++) {
+        const a = pts[k], b = pts[k + 1];
+        if (k > 0) next.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25]);
+        if (k < pts.length - 2) next.push([a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
+      }
+      next.push(pts[pts.length - 1]);
+      pts = next;
+    }
+    return pts;
+  }
+
+  function simplifyDP(pts, tol) {
+    if (pts.length < 3) return pts;
+    const keep = new Uint8Array(pts.length);
+    keep[0] = keep[pts.length - 1] = 1;
+    const stack = [[0, pts.length - 1]];
+    while (stack.length) {
+      const [a, b] = stack.pop();
+      const [ax, ay] = pts[a], [bx, by] = pts[b];
+      const len = Math.hypot(bx - ax, by - ay) || 1;
+      let worst = -1, wd = 0;
+      for (let k = a + 1; k < b; k++) {
+        const d = Math.abs((bx - ax) * (ay - pts[k][1]) - (ax - pts[k][0]) * (by - ay)) / len;
+        if (d > wd) { wd = d; worst = k; }
+      }
+      if (wd > tol) { keep[worst] = 1; stack.push([a, worst], [worst, b]); }
+    }
+    return pts.filter((_, k) => keep[k]);
+  }
+
+  // Split a nation into provinces around seats (multi-source growth), and return
+  // only the internal province borders as a MultiLineString.
+  function makeProvinces(cells, seats, style, rng) {
+    if (seats.length < 2) return { lines: null, areas: [areaOf(cells)] };
+    const idx = new Map();
+    cells.forEach((c, k) => idx.set(c, k));
+    const prov = new Int16Array(cells.length).fill(-1);
+    const xy = i => { const y = (i / W) | 0; return [i - y * W, y]; };
+    if (style === 'natural') {
+      const noise = makeNoise(rng);
+      const best = new Float64Array(cells.length).fill(Infinity);
+      const heap = new Heap();
+      seats.forEach((s, p) => { const k = idx.get(s); best[k] = 0; prov[k] = p; heap.push(k, 0); });
+      while (heap.size) {
+        const k = heap.pop(), d = heap.lastP;
+        if (d > best[k]) continue;
+        const [x, y] = xy(cells[k]);
+        for (const [dx, dy] of NB8) {
+          const j = idx.get((y + dy) * W + x + dx);
+          if (j === undefined || x + dx < 0 || x + dx >= W) continue;
+          const step = Math.hypot(dx * cosLat[y], dy) * (0.6 + 1.6 * noise.fbm((x + dx) / 9, (y + dy) / 9));
+          if (d + step < best[j]) { best[j] = d + step; prov[j] = prov[k]; heap.push(j, d + step); }
+        }
+      }
+    } else {
+      // Plain Voronoi: perfectly straight internal borders, like many federal states.
+      const sxy = seats.map(xy);
+      cells.forEach((c, k) => {
+        const [x, y] = xy(c);
+        let bd = Infinity;
+        sxy.forEach(([px, py], p) => { const d = ((x - px) * cosLat[y]) ** 2 + (y - py) ** 2; if (d < bd) { bd = d; prov[k] = p; } });
+      });
+    }
+    const areas = new Array(seats.length).fill(0);
+    cells.forEach((c, k) => { if (prov[k] >= 0) areas[prov[k]] += cellArea((c / W) | 0); });
+
+    // Cell edges between two different provinces, in grid-corner coordinates.
+    const edges = [];
+    cells.forEach((c, k) => {
+      const [x, y] = xy(c);
+      const r = idx.get(c + 1), d = idx.get(c + W);
+      if (r !== undefined && x + 1 < W && prov[r] !== prov[k]) edges.push([x + 1, y, x + 1, y + 1]);
+      if (d !== undefined && prov[d] !== prov[k]) edges.push([x, y + 1, x + 1, y + 1]);
+    });
+    const key = (x, y) => y * (W + 1) + x;
+    const at = new Map();
+    edges.forEach((e, n) => {
+      for (const kk of [key(e[0], e[1]), key(e[2], e[3])]) { if (!at.has(kk)) at.set(kk, []); at.get(kk).push(n); }
+    });
+    const used = new Uint8Array(edges.length);
+    const walk = (startKey, n) => {
+      const pts = [];
+      let cur = startKey;
+      pts.push([cur % (W + 1), Math.floor(cur / (W + 1))]);
+      while (n >= 0 && !used[n]) {
+        used[n] = 1;
+        const e = edges[n];
+        const a = key(e[0], e[1]), b = key(e[2], e[3]);
+        cur = cur === a ? b : a;
+        pts.push([cur % (W + 1), Math.floor(cur / (W + 1))]);
+        const list = at.get(cur);
+        if (list.length !== 2) break;
+        n = list[0] === n ? list[1] : list[0];
+      }
+      return pts;
+    };
+    const polylines = [];
+    for (const [kk, list] of at) if (list.length !== 2) for (const n of list) if (!used[n]) polylines.push(walk(kk, n));
+    edges.forEach((e, n) => { if (!used[n]) polylines.push(walk(key(e[0], e[1]), n)); });
+
+    const amp = Math.min(0.6, 0.25 + cells.length / 400);
+    const lines = polylines.filter(p => p.length > 1).map(p => {
+      let q = style === 'natural' ? chaikinOpen(p, 2) : simplifyDP(p, 0.9);
+      if (style === 'natural') {
+        const dense = [];
+        for (let k = 0; k < q.length - 1; k++) {
+          const a = q[k], b = q[k + 1], steps = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 0.3));
+          for (let t = 0; t < steps; t++) dense.push([a[0] + (b[0] - a[0]) * t / steps, a[1] + (b[1] - a[1]) * t / steps]);
+        }
+        dense.push(q[q.length - 1]);
+        q = dense.map(([x, y]) => [x + (borderNoise.fbm(x * 0.45, y * 0.45) - 0.5) * 2.4 * amp,
+          y + (borderNoise.fbm(x * 0.45 + 71.3, y * 0.45 + 37.9) - 0.5) * 2.4 * amp]);
+      }
+      return q.map(([gx, gy]) => [+(-180 + gx * RES).toFixed(3), +(90 - gy * RES).toFixed(3)]);
+    });
+    return { lines: lines.length ? { type: 'MultiLineString', coordinates: lines } : null, areas };
+  }
+
+  /* ---------- land profile (drives realistic wheel odds) ---------- */
+
+  function sampleCells(cells, n) {
+    const out = [];
+    const step = Math.max(1, Math.floor(cells.length / n));
+    for (let k = 0; k < cells.length; k += step) {
+      const i = cells[k];
+      const y = (i / W) | 0, x = i - y * W;
+      out.push([lonOf(x), latOf(y), coastDist[i]]);
+    }
+    return out;
   }
 
   /**
@@ -871,7 +1015,12 @@
       notes.push(`Rival borders and coastlines boxed you in — you secured ${Math.round(info.area / targetArea * 100)}% of the land you were promised.`);
     }
     const cityCount = Math.max(1, Math.min(7, Math.round(Math.log10(Math.max(10, info.area)) * 1.6 - 3)));
-    const cities = pickCities(cells, info, coastal, cityCount, rng);
+    const cityCells = pickCities(cells, info, coastal, cityCount, rng);
+    const cities = cityCells.map(cellLonLat);
+    // Provinces: one per city, plus more seats for big nations.
+    const provCount = info.area < 6000 ? 1 : Math.max(2, Math.min(16, Math.round(Math.log10(info.area) * 3.4 - 12.5 + rng() * 2)));
+    const seats = cells.length >= 25 && provCount > 1 ? spreadPoints(cells, cityCells, Math.max(provCount, Math.min(2, cityCells.length)), rng) : cityCells.slice(0, 1);
+    const prov = makeProvinces(cells, seats, style, rng);
     const geometry = toGeometry(cells, coastal, style, lines);
     delete info.depth;
     return {
@@ -879,6 +1028,9 @@
       area: info.area, coastlineKm: info.coastEdges * CELL_KM * (1.6 + rng() * 1.4),
       centroid: info.centroid, latMin: info.latMin, latMax: info.latMax,
       neighbors: info.neighbors, carved: info.carved, continent: c, borderStyle: style,
+      provinceLines: prov.lines,
+      provinces: seats.map((s, p) => ({ seat: cellLonLat(s), city: p < cityCells.length ? p : -1, area: prov.areas[p] || 0 })),
+      samples: sampleCells(cells, 400),
     };
   }
 

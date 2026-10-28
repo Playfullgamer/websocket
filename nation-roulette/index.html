@@ -10,7 +10,8 @@
   <header class="topbar">
     <div class="brand"><span class="logo">🎡</span><span>Nation <em>Roulette</em></span></div>
     <div class="top-actions">
-      <button id="btn-nations" class="ghost">🏳️ My Nations <span class="count" id="nation-count">0</span></button>
+      <button id="btn-nations" class="ghost">🏳️ <span class="lbl">My Nations</span> <span class="count" id="nation-count">0</span></button>
+      <button id="btn-rankings" class="ghost" title="Compare your nations">🏆 <span class="lbl">Rankings</span></button>
       <button id="btn-sound" class="ghost icon" title="Toggle sound">🔊</button>
       <button id="btn-reset" class="ghost" title="Dissolve every nation">↺ Reset World</button>
     </div>
@@ -26,6 +27,7 @@
         <button id="flag-toggle" title="Toggle flags on nations">🏳️</button>
       </div>
       <div class="map-hint">Scroll / pinch to zoom · drag to pan · click any nation for stats</div>
+      <div class="ticker"><span class="ticker-label">WORLD NEWS</span><div class="ticker-track"><div id="ticker-text" class="ticker-text"></div></div></div>
       <div id="tooltip" class="tooltip hidden"></div>
       <div id="map-toast" class="toast hidden"></div>
       <aside id="drawer" class="drawer hidden">
@@ -40,6 +42,7 @@
         <div class="step-count" id="step-count">Wheel 1</div>
         <h2 id="wheel-title">Continent</h2>
         <p id="wheel-desc"></p>
+        <p id="odds-note" class="odds-note hidden"></p>
       </div>
       <div class="wheel-box">
         <canvas id="wheel"></canvas>
@@ -77,6 +80,7 @@
   <script src="js/vendor/topojson-client.min.js"></script>
   <script src="js/world-data.js"></script>
   <script src="js/generator.js"></script>
+  <script src="js/realism.js"></script>
   <script src="js/wheels.js"></script>
   <script src="js/lore.js"></script>
   <script src="js/main.js"></script>

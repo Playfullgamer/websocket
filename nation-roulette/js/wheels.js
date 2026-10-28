@@ -38,8 +38,8 @@
     },
     {
       key: 'terrain', title: 'Terrain', icon: '⛰️', desc: 'What does the land look like?',
-      segments: ['Plains', 'Mountains', 'Rolling Hills', 'Dense Forest', 'Desert', 'Jungle', 'Highlands', 'Wetlands', 'Steppe', 'Canyons']
-        .map(t => s(t)),
+      segments: ['Plains', 'Mountains', 'Rolling Hills', 'Dense Forest', 'Desert', 'Jungle', 'Highlands', 'Wetlands', 'Steppe', 'Canyons',
+        'Tundra', 'Savanna'].map(t => s(t)),
     },
     {
       key: 'population', title: 'Population Density', icon: '👥', desc: 'How many people call it home?',
@@ -113,6 +113,12 @@
   const PALETTE = ['#ef476f', '#f78c6b', '#ffd166', '#06d6a0', '#1b9aaa', '#118ab2', '#7b5cff', '#c65bcf',
     '#ff7aa2', '#43aa8b', '#f9844a', '#4d908e', '#577590', '#90be6d', '#f3722c', '#9b5de5'];
 
+  function shade(hex, amt) {
+    const n = parseInt(hex.slice(1), 16);
+    const f = c => Math.round(amt >= 0 ? c + (255 - c) * amt : c * (1 + amt));
+    return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
+  }
+
   /* ---------- sound ---------- */
   const Sound = {
     enabled: true,
@@ -154,8 +160,12 @@
       this.highlight = -1;
       this.spinning = false;
       this.icon = '';
+      this.phase = 0;
+      this.flap = 0;
       this.resize();
       global.addEventListener('resize', () => this.resize());
+      // Slow chase of the rim lights while idle.
+      setInterval(() => { if (!this.spinning && !document.hidden) { this.phase++; this.draw(); } }, 500);
     }
 
     resize() {
@@ -194,47 +204,83 @@
     draw() {
       const ctx = this.ctx, size = this.size;
       if (!size) return;
-      const cx = size / 2, cy = size / 2, r = size / 2 - 14;
+      const cx = size / 2, cy = size / 2 + 4, r = size / 2 - 20;
       ctx.clearRect(0, 0, size, size);
 
-      // outer rim
+      // outer rim with drop shadow
       ctx.save();
-      ctx.beginPath(); ctx.arc(cx, cy, r + 9, 0, Math.PI * 2);
+      ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 6;
+      ctx.beginPath(); ctx.arc(cx, cy, r + 14, 0, Math.PI * 2);
       const rim = ctx.createLinearGradient(0, 0, size, size);
-      rim.addColorStop(0, '#f6d77a'); rim.addColorStop(0.5, '#b8860b'); rim.addColorStop(1, '#f6d77a');
+      rim.addColorStop(0, '#ffe7a3'); rim.addColorStop(0.45, '#b8860b'); rim.addColorStop(0.55, '#8a6408'); rim.addColorStop(1, '#f6d77a');
       ctx.fillStyle = rim; ctx.fill();
       ctx.restore();
+      ctx.beginPath(); ctx.arc(cx, cy, r + 3, 0, Math.PI * 2); ctx.fillStyle = '#3b2a05'; ctx.fill();
+
+      // rim lights
+      const bulbs = 28;
+      for (let k = 0; k < bulbs; k++) {
+        const a = k / bulbs * Math.PI * 2 + 0.05;
+        const lit = (k + this.phase) % 2 === 0;
+        const bx = cx + Math.cos(a) * (r + 8.5), by = cy + Math.sin(a) * (r + 8.5);
+        ctx.beginPath(); ctx.arc(bx, by, 3, 0, Math.PI * 2);
+        if (lit) { ctx.save(); ctx.shadowColor = '#fff3b0'; ctx.shadowBlur = 8; ctx.fillStyle = '#fffbe6'; ctx.fill(); ctx.restore(); }
+        else { ctx.fillStyle = '#7a5a12'; ctx.fill(); }
+      }
 
       const n = this.segments.length;
       this.segments.forEach((sg, k) => {
         const a0 = sg.a0 + this.rot, a1 = sg.a1 + this.rot;
         ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, a0, a1); ctx.closePath();
-        ctx.fillStyle = sg.color; ctx.fill();
-        if (this.highlight >= 0 && this.highlight !== k) { ctx.fillStyle = 'rgba(10,15,30,0.55)'; ctx.fill(); }
-        ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 2; ctx.stroke();
+        const g = ctx.createRadialGradient(cx, cy, r * 0.15, cx, cy, r);
+        g.addColorStop(0, shade(sg.color, 0.28)); g.addColorStop(0.75, sg.color); g.addColorStop(1, shade(sg.color, -0.18));
+        ctx.fillStyle = g; ctx.fill();
+        if (this.highlight >= 0 && this.highlight !== k) { ctx.fillStyle = 'rgba(10,15,30,0.6)'; ctx.fill(); }
+        ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.5; ctx.stroke();
 
         // label
         const mid = (a0 + a1) / 2, span = sg.a1 - sg.a0;
+        if (span < 0.07) return;
         ctx.save();
-        ctx.translate(cx, cy); ctx.rotate(mid);
-        const maxW = r * 0.66;
-        let fs = Math.min(18, Math.max(9, r * span * 0.42), r * 0.085 + 4);
+        ctx.translate(cx, cy);
+        // Keep labels readable: text on the left half is flipped the right way up.
+        const flip = Math.cos(mid) < 0;
+        ctx.rotate(flip ? mid + Math.PI : mid);
+        const maxW = r * 0.64;
+        let fs = Math.min(17, Math.max(8, r * span * 0.42), r * 0.085 + 4);
         if (n > 12) fs = Math.min(fs, r * 0.068 + 3);
         ctx.font = `700 ${fs}px Inter, system-ui, sans-serif`;
-        let label = sg.seg.label;
-        while (ctx.measureText(label).width > maxW && fs > 8) { fs -= 0.5; ctx.font = `700 ${fs}px Inter, system-ui, sans-serif`; }
+        const label = sg.seg.label;
+        while (ctx.measureText(label).width > maxW && fs > 7) { fs -= 0.5; ctx.font = `700 ${fs}px Inter, system-ui, sans-serif`; }
         ctx.fillStyle = '#fff';
-        ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-        ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 3;
-        ctx.fillText(label, r - 12, 0);
+        ctx.textAlign = flip ? 'left' : 'right'; ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 3;
+        ctx.fillText(label, flip ? -(r - 12) : r - 12, 0);
         ctx.restore();
       });
+
+      // gloss
+      ctx.save();
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
+      const gloss = ctx.createLinearGradient(0, cy - r, 0, cy + r);
+      gloss.addColorStop(0, 'rgba(255,255,255,0.22)'); gloss.addColorStop(0.45, 'rgba(255,255,255,0.03)'); gloss.addColorStop(1, 'rgba(0,0,0,0.18)');
+      ctx.fillStyle = gloss; ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+      ctx.restore();
+
+      // winning slice outline
+      if (this.highlight >= 0 && this.segments[this.highlight]) {
+        const sg = this.segments[this.highlight];
+        ctx.save();
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, sg.a0 + this.rot, sg.a1 + this.rot); ctx.closePath();
+        ctx.shadowColor = '#fff3b0'; ctx.shadowBlur = 14; ctx.lineWidth = 3; ctx.strokeStyle = '#fff6cf'; ctx.stroke();
+        ctx.restore();
+      }
 
       // pegs
       for (let k = 0; k < n; k++) {
         const a = this.segments[k].a0 + this.rot;
-        ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (r + 2), cy + Math.sin(a) * (r + 2), 3.2, 0, Math.PI * 2);
-        ctx.fillStyle = '#fff8e1'; ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (r - 1), cy + Math.sin(a) * (r - 1), 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff8e1'; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = '#6b4d07'; ctx.stroke();
       }
 
       // hub
@@ -249,12 +295,16 @@
         ctx.fillText(this.icon, cx, cy + 1);
       }
 
-      // pointer (top)
+      // pointer (top), flaps back when it hits a peg
       ctx.save();
-      ctx.translate(cx, 6);
-      ctx.beginPath(); ctx.moveTo(-15, -2); ctx.lineTo(15, -2); ctx.lineTo(0, 30); ctx.closePath();
-      ctx.fillStyle = '#fff'; ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 6; ctx.fill();
-      ctx.shadowBlur = 0; ctx.lineWidth = 2.5; ctx.strokeStyle = '#d62839'; ctx.stroke();
+      ctx.translate(cx, cy - r - 16);
+      ctx.rotate(-this.flap * 0.45);
+      ctx.beginPath(); ctx.moveTo(-13, 0); ctx.lineTo(13, 0); ctx.lineTo(0, 34); ctx.closePath();
+      const pg = ctx.createLinearGradient(-13, 0, 13, 0);
+      pg.addColorStop(0, '#ff6b7a'); pg.addColorStop(1, '#b3122a');
+      ctx.fillStyle = pg; ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 6; ctx.fill();
+      ctx.shadowBlur = 0; ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 4, 4, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
       ctx.restore();
     }
 
@@ -281,11 +331,14 @@
           const e = 1 - Math.pow(1 - t, 4);
           this.rot = start + delta * e;
           const cur = this.indexAtPointer();
-          if (cur !== lastIdx) { lastIdx = cur; if (!fast) Sound.tick(); }
+          if (cur !== lastIdx) { lastIdx = cur; this.flap = 1; if (!fast) Sound.tick(); }
+          this.flap *= 0.82;
+          this.phase = Math.floor(now / 90);
           this.draw();
           if (t < 1) requestAnimationFrame(frame);
           else {
             this.rot = start + delta;
+            this.flap = 0;
             this.highlight = idx;
             this.spinning = false;
             this.draw();

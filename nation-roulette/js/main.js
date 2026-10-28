@@ -2,10 +2,11 @@
 (function () {
   'use strict';
 
-  const { WHEELS, Wheel, Sound, Lore } = window.NR;
+  const { WHEELS, Wheel, Sound, Lore, Realism } = window.NR;
   const STORE_KEY = 'nation-roulette-v1';
   const $ = id => document.getElementById(id);
   const sleep = ms => new Promise(res => setTimeout(res, ms));
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
   const fmtInt = n => Math.round(n).toLocaleString('en-US');
   function fmtBig(n) {
@@ -15,13 +16,25 @@
     if (a >= 1e6) return (n / 1e6).toFixed(2) + ' million';
     return fmtInt(n);
   }
+  function fmtShort(n) {
+    const a = Math.abs(n);
+    if (a >= 1e12) return (n / 1e12).toFixed(1) + 'T';
+    if (a >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+    if (a >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+    if (a >= 1e3) return (n / 1e3).toFixed(0) + 'k';
+    return fmtInt(n);
+  }
   const fmtMoney = n => '$' + fmtBig(n);
   const fmtArea = n => fmtInt(n) + ' km²';
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+  // Categorical chart palette (validated for the dark surface); "Other" is neutral grey.
+  const SERIES = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#9085e9'];
+  const OTHER = '#6b7385';
+
   const state = {
     step: 0, results: {}, territory: null, busy: false, auto: false,
-    nations: [], nextSlot: 1, drawerOpen: false, flagFill: true,
+    nations: [], nextSlot: 1, drawerOpen: false, flagFill: true, tab: 'overview', rankKey: 'gdp',
   };
 
   /* ================= map ================= */
@@ -30,15 +43,21 @@
   const projection = d3.geoNaturalEarth1();
   const path = d3.geoPath(projection);
   let width = 800, height = 500, k = 1;
-  let world, land, countries;
+  let world, land, countries, countryLabels = [];
 
   const defs = svg.append('defs');
+  const ocean = defs.append('radialGradient').attr('id', 'ocean-grad').attr('cx', '50%').attr('cy', '45%').attr('r', '65%');
+  ocean.append('stop').attr('offset', '0%').attr('stop-color', '#1d4f7a');
+  ocean.append('stop').attr('offset', '100%').attr('stop-color', '#0c2741');
   const clipPath = defs.append('clipPath').attr('id', 'land-clip').append('path');
   const zoomLayer = svg.append('g');
   const spherePath = zoomLayer.append('path').attr('class', 'sphere');
   const gratPath = zoomLayer.append('path').attr('class', 'graticule');
+  const glowPath = zoomLayer.append('path').attr('class', 'land-glow');
   const countryG = zoomLayer.append('g').attr('class', 'countries');
+  const clabelG = zoomLayer.append('g').attr('class', 'country-labels');
   const nationG = zoomLayer.append('g').attr('class', 'nations').attr('clip-path', 'url(#land-clip)');
+  const provG = zoomLayer.append('g').attr('class', 'provinces');
   const pendingG = zoomLayer.append('g').attr('class', 'pending').attr('clip-path', 'url(#land-clip)');
   const markerG = zoomLayer.append('g').attr('class', 'markers');
   const labelG = zoomLayer.append('g').attr('class', 'labels');
@@ -47,18 +66,21 @@
     .on('zoom', ev => { zoomLayer.attr('transform', ev.transform); k = ev.transform.k; updateScaled(); });
   svg.call(zoom);
 
-  const COUNTRY_TONES = ['#d9cfb4', '#cfd6b8', '#d6c6ae', '#e0d4c0', '#c8cfb0', '#dccbb6', '#cbc4a6', '#d3d9bf'];
+  // Political-atlas pastels; neighbouring countries never share a tone.
+  const ATLAS = ['#eadcb8', '#d7e4bd', '#f0d2b4', '#cfe0d4', '#ead2cc', '#ddd6ea'];
 
   function layout() {
     const r = $('map-wrap').getBoundingClientRect();
     width = Math.max(300, r.width); height = Math.max(240, r.height);
     svg.attr('viewBox', `0 0 ${width} ${height}`);
-    projection.fitExtent([[6, 6], [width - 6, height - 6]], { type: 'Sphere' });
+    projection.fitExtent([[6, 6], [width - 6, height - 30]], { type: 'Sphere' });
     zoom.extent([[0, 0], [width, height]]).translateExtent([[0, 0], [width, height]]);
     spherePath.attr('d', path({ type: 'Sphere' }));
     gratPath.attr('d', path(d3.geoGraticule10()));
+    glowPath.attr('d', path(land));
     countryG.selectAll('path').attr('d', path);
     clipPath.attr('d', path(land));
+    computeCountryLabels();
     renderNations();
     renderPending();
   }
@@ -67,9 +89,17 @@
     world = window.WORLD_TOPO;
     land = topojson.feature(world, world.objects.land);
     countries = WorldGen.features;
+    const nb = topojson.neighbors(world.objects.countries.geometries);
+    const tone = new Array(countries.length).fill(-1);
+    countries.map((_, i) => i).sort((a, b) => nb[b].length - nb[a].length).forEach(i => {
+      const used = new Set(nb[i].map(j => tone[j]));
+      let t = 0;
+      while (used.has(t) && t < ATLAS.length - 1) t++;
+      tone[i] = t;
+    });
     countryG.selectAll('path').data(countries).join('path')
       .attr('class', 'country')
-      .attr('fill', (d, i) => COUNTRY_TONES[(i * 7 + (d.properties.name.length)) % COUNTRY_TONES.length])
+      .attr('fill', (d, i) => ATLAS[tone[i]])
       .on('click', (ev, d) => showCountry(countries.indexOf(d)))
       .on('mousemove', (ev, d) => tip(ev, `<b>${esc(d.properties.name)}</b>`))
       .on('mouseleave', hideTip);
@@ -77,13 +107,25 @@
     window.addEventListener('resize', () => { layout(); wheel.resize(); });
   }
 
+  function computeCountryLabels() {
+    countryLabels = countries.map((f, i) => {
+      const main = largestPolygon(f.geometry.type === 'Polygon' ? { type: 'MultiPolygon', coordinates: [f.geometry.coordinates] } : f.geometry);
+      const b = path.bounds(main);
+      const c = path.centroid(main);
+      return { i, name: f.properties.name, x: c[0], y: c[1], size: Math.min(b[1][0] - b[0][0], (b[1][1] - b[0][1]) * 2.2) };
+    }).filter(d => isFinite(d.x) && d.name !== 'Antarctica');
+    clabelG.selectAll('text').data(countryLabels, d => d.i).join('text')
+      .attr('class', 'clabel').attr('text-anchor', 'middle')
+      .attr('x', d => d.x).attr('y', d => d.y).text(d => d.name);
+  }
+
   function tip(ev, html) {
     const t = $('tooltip');
     const r = $('map-wrap').getBoundingClientRect();
     t.innerHTML = html;
     t.classList.remove('hidden');
-    t.style.left = Math.min(ev.clientX - r.left + 14, r.width - 220) + 'px';
-    t.style.top = (ev.clientY - r.top + 14) + 'px';
+    t.style.left = Math.max(4, Math.min(ev.clientX - r.left + 14, r.width - 250)) + 'px';
+    t.style.top = Math.min(ev.clientY - r.top + 14, r.height - 60) + 'px';
   }
   function hideTip() { $('tooltip').classList.add('hidden'); }
 
@@ -118,6 +160,9 @@
         d3.select(this).attr('x', x0).attr('y', y0).attr('width', w).attr('height', h)
           .html(flagPatternContent(d.stats.flag, w, h));
       });
+    defs.selectAll('clipPath.nclip').data(state.nations, d => d.slot)
+      .join(enter => { const c = enter.append('clipPath').attr('class', 'nclip').attr('id', d => 'nclip-' + d.slot); c.append('path'); return c; })
+      .select('path').attr('d', d => path(d.geometry));
   }
 
   function nationFill(d) { return state.flagFill ? `url(#flagpat-${d.slot})` : d.color; }
@@ -132,6 +177,13 @@
       .on('click', (ev, d) => { ev.stopPropagation(); showNation(d); })
       .on('mousemove', (ev, d) => tip(ev, `<span class="tip-flag">${d.stats.flag}</span><b>${esc(d.stats.name)}</b><br><small>Pop. ${fmtBig(d.stats.population)} · ${fmtArea(d.stats.area)}</small>`))
       .on('mouseleave', hideTip);
+
+    const withProv = state.nations.filter(n => n.provinceLines);
+    provG.selectAll('path.prov-line').data(withProv, d => d.slot).join('path')
+      .attr('class', 'prov-line')
+      .attr('clip-path', d => `url(#nclip-${d.slot})`)
+      .attr('d', d => path(d.provinceLines))
+      .each(d => { d._size = projectedSize(d.geometry); });
 
     const markers = nationMarkers();
     markerG.selectAll('g.mk').data(markers, d => d.key).join(enter => {
@@ -151,6 +203,7 @@
       })
       .text(d => d.stats.root);
     updateScaled();
+    updateTicker();
   }
 
   function largestPolygon(geom) {
@@ -173,6 +226,10 @@
       .attr('font-size', d => Math.min(22, Math.max(10, d._size * k / 9)) / k)
       .attr('stroke-width', 3 / k)
       .attr('display', d => d._size * k > 34 ? null : 'none');
+    clabelG.selectAll('text.clabel')
+      .attr('font-size', d => Math.min(13, Math.max(8.5, d.size * k / 12)) / k)
+      .attr('display', d => d.size * k > 48 ? null : 'none');
+    provG.selectAll('path.prov-line').attr('display', d => d._size * k > 70 ? null : 'none');
     pendingG.selectAll('path').attr('stroke-width', 2.2 / k);
   }
 
@@ -186,7 +243,7 @@
 
   function zoomToGeometry(geom, duration = 1400) {
     const [[x0, y0], [x1, y1]] = path.bounds(geom);
-    const drawerW = state.drawerOpen && width > 760 ? Math.min(400, width * 0.45) : 0;
+    const drawerW = state.drawerOpen && width > 760 ? Math.min(420, width * 0.45) : 0;
     const viewW = width - drawerW;
     const dx = Math.max(1, x1 - x0), dy = Math.max(1, y1 - y0);
     const s = Math.max(1, Math.min(60, 0.55 / Math.max(dx / viewW, dy / height)));
@@ -214,12 +271,27 @@
     }
   }
 
+  function wheelContext() {
+    const t = state.territory;
+    if (!t) return null;
+    return {
+      profile: Realism.profile(t.samples),
+      region: Realism.cultureRegion(t.continent, t.centroid[0], t.centroid[1]),
+      terrain: state.results.terrain ? state.results.terrain.label : '',
+    };
+  }
+
   function loadWheel() {
     const w = WHEELS[state.step];
-    wheel.setSegments(w.segments, w.icon);
+    const ctx = wheelContext();
+    const weighted = ctx && Realism.weightsFor(w.key, w.segments, ctx);
+    wheel.setSegments(weighted || w.segments, w.icon);
     $('step-count').textContent = `Wheel ${state.step + 1} of ${WHEELS.length}`;
     $('wheel-title').textContent = w.title;
     $('wheel-desc').textContent = w.desc;
+    const note = $('odds-note');
+    note.textContent = weighted ? Realism.describe(w.key, ctx) : '';
+    note.classList.toggle('hidden', !weighted);
     $('progress-bar').style.width = (state.step / WHEELS.length * 100) + '%';
     renderSteps();
   }
@@ -312,6 +384,7 @@
       slot: state.nextSlot++,
       color: `hsl(${hue}, ${62 + Math.floor(Math.random() * 20)}%, ${48 + Math.floor(Math.random() * 10)}%)`,
       geometry: terr.geometry,
+      provinceLines: terr.provinceLines,
       rle: WorldGen.encodeCells(terr.cells),
       cells: terr.cells,
       results: Object.fromEntries(Object.entries(state.results).map(([key, v]) => [key, v.label])),
@@ -340,6 +413,100 @@
     loadWheel();
   }
 
+  /* ================= charts ================= */
+
+  // 100% stacked bar with a 2px gap between segments, legend underneath.
+  function stackBar(items, unit) {
+    let x = 0;
+    const segs = items.map((it, i) => {
+      const color = it.name === 'Other' ? OTHER : SERIES[i % SERIES.length];
+      const w = it.pct;
+      const out = `<span class="seg" style="left:${x}%;width:calc(${w}% - 2px);background:${color}" data-tip="<b>${esc(it.name)}</b><br>${it.pct}%${unit ? ' ' + unit : ''}"></span>`;
+      x += w;
+      return out;
+    }).join('');
+    const legend = items.map((it, i) => `<li><i style="background:${it.name === 'Other' ? OTHER : SERIES[i % SERIES.length]}"></i>${esc(it.name)} <b>${it.pct}%</b></li>`).join('');
+    return `<div class="stackbar">${segs}</div><ul class="legend">${legend}</ul>`;
+  }
+
+  function radar(profile) {
+    const W = 340, H = 236, cx = W / 2, cy = H / 2 + 2, R = 80, n = profile.length;
+    const pt = (i, v) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; return [cx + Math.cos(a) * R * v, cy + Math.sin(a) * R * v]; };
+    let g = '';
+    [0.25, 0.5, 0.75, 1].forEach(lv => {
+      g += `<polygon class="r-grid" points="${profile.map((_, i) => pt(i, lv).join(',')).join(' ')}"/>`;
+    });
+    profile.forEach((p, i) => {
+      const [x, y] = pt(i, 1), [lx, ly] = pt(i, 1.2);
+      g += `<line class="r-axis" x1="${cx}" y1="${cy}" x2="${x}" y2="${y}"/>`;
+      const anchor = Math.abs(lx - cx) < 8 ? 'middle' : lx > cx ? 'start' : 'end';
+      g += `<text class="r-label" x="${lx}" y="${ly + 4}" text-anchor="${anchor}">${p.name}</text>`;
+    });
+    const poly = profile.map((p, i) => pt(i, Math.max(0.03, p.v)).join(',')).join(' ');
+    g += `<polygon class="r-shape" points="${poly}"/>`;
+    profile.forEach((p, i) => {
+      const [x, y] = pt(i, Math.max(0.03, p.v));
+      g += `<circle class="r-dot" cx="${x}" cy="${y}" r="4"/><circle class="hit" cx="${x}" cy="${y}" r="12" data-tip="<b>${p.name}</b><br>${Math.round(p.v * 100)} / 100"/>`;
+    });
+    return `<svg class="chart radar" viewBox="0 0 ${W} ${H}" role="img" aria-label="National profile">${g}</svg>`;
+  }
+
+  function hemicycle(parl) {
+    if (!parl || parl.assembly) return '<p class="muted">No parliament — every citizen votes directly in the national assembly.</p>';
+    const total = parl.parties.reduce((a, p) => a + p.seats, 0);
+    const W = 300, H = 160, cx = W / 2, cy = H - 8;
+    const shown = Math.min(total, 360);
+    const rows = Math.max(3, Math.round(Math.sqrt(shown / 3.2)));
+    const r0 = 52, r1 = 140;
+    const dots = [];
+    const per = [];
+    let sumLen = 0;
+    for (let rI = 0; rI < rows; rI++) { const rad = r0 + (r1 - r0) * rI / Math.max(1, rows - 1); per.push(rad); sumLen += rad; }
+    per.forEach(rad => {
+      const n = Math.max(1, Math.round(shown * rad / sumLen));
+      for (let j = 0; j < n; j++) {
+        const a = Math.PI - Math.PI * (j + 0.5) / n;
+        dots.push({ a, x: cx + Math.cos(a) * rad, y: cy - Math.sin(a) * rad });
+      }
+    });
+    dots.sort((p, q) => q.a - p.a);
+    const dotR = Math.max(1.6, Math.min(5, 360 / Math.sqrt(dots.length) / 7.5));
+    let idx = 0;
+    const pieces = [];
+    parl.parties.forEach((p, i) => {
+      const n = Math.round(dots.length * p.seats / total);
+      const color = SERIES[i % SERIES.length];
+      for (let j = 0; j < n && idx < dots.length; j++, idx++) {
+        const d = dots[idx];
+        pieces.push(`<circle cx="${d.x.toFixed(1)}" cy="${d.y.toFixed(1)}" r="${dotR}" fill="${color}" data-tip="<b>${esc(p.name)}</b><br>${p.seats} of ${total} seats"/>`);
+      }
+    });
+    // Rounding leftovers go to the largest party.
+    while (idx < dots.length) { const d = dots[idx++]; pieces.push(`<circle cx="${d.x.toFixed(1)}" cy="${d.y.toFixed(1)}" r="${dotR}" fill="${SERIES[0]}"/>`); }
+    const legend = parl.parties.map((p, i) => `<li><i style="background:${SERIES[i % SERIES.length]}"></i>${esc(p.name)} <b>${p.seats}</b></li>`).join('');
+    const maj = Math.floor(total / 2) + 1;
+    return `<svg class="chart hemi" viewBox="0 0 ${W} ${H}" role="img" aria-label="Parliament seats">${pieces.join('')}
+      <text class="hemi-total" x="${cx}" y="${cy - 14}" text-anchor="middle">${total}</text>
+      <text class="hemi-sub" x="${cx}" y="${cy}" text-anchor="middle">seats · majority ${maj}</text></svg>
+      <ul class="legend">${legend}</ul>`;
+  }
+
+  function lineChart(hist) {
+    if (hist.length < 2) return '<p class="muted">Founded this year — history starts now!</p>';
+    const W = 300, H = 140, L = 40, Rr = 10, T = 12, B = 22;
+    const x = d3.scaleLinear().domain(d3.extent(hist, d => d.year)).range([L, W - Rr]);
+    const y = d3.scaleLinear().domain([0, d3.max(hist, d => d.pop) * 1.08]).range([H - B, T]);
+    const line = d3.line().x(d => x(d.year)).y(d => y(d.pop)).curve(d3.curveMonotoneX)(hist);
+    const ticks = y.ticks(3).map(t => `<line class="grid" x1="${L}" x2="${W - Rr}" y1="${y(t)}" y2="${y(t)}"/><text class="axis" x="${L - 6}" y="${y(t) + 3}" text-anchor="end">${fmtShort(t)}</text>`).join('');
+    const first = hist[0], last = hist[hist.length - 1];
+    const pts = hist.map(d => `<circle class="hit" cx="${x(d.year)}" cy="${y(d.pop)}" r="10" data-tip="<b>${d.year}</b><br>${fmtBig(d.pop)} people"/>`).join('');
+    return `<svg class="chart line" viewBox="0 0 ${W} ${H}" role="img" aria-label="Population over time">${ticks}
+      <path class="ln" d="${line}"/>
+      <circle class="end" cx="${x(last.year)}" cy="${y(last.pop)}" r="4"/>
+      <text class="axis" x="${L}" y="${H - 6}">${first.year}</text><text class="axis" x="${W - Rr}" y="${H - 6}" text-anchor="end">${last.year}</text>
+      ${pts}</svg>`;
+  }
+
   /* ================= panels ================= */
 
   function openDrawer(html) {
@@ -348,16 +515,17 @@
     $('drawer-body').scrollTop = 0;
     state.drawerOpen = true;
   }
-  function closeDrawer() { $('drawer').classList.add('hidden'); state.drawerOpen = false; }
+  function closeDrawer() { $('drawer').classList.add('hidden'); state.drawerOpen = false; hideTip(); }
 
   function bar(v, max, cls) {
     return `<span class="bar ${cls || ''}"><i style="width:${Math.max(2, Math.min(100, v / max * 100))}%"></i></span>`;
   }
-
   function row(label, value) { return `<div class="kv"><span>${label}</span><b>${value}</b></div>`; }
-
+  function tile(label, value, sub) { return `<div class="tile"><small>${label}</small><b>${value}</b>${sub ? `<em>${sub}</em>` : ''}</div>`; }
   function nationLink(n) { return `<a href="#" data-nation="${n.slot}">${esc(n.stats.root)}</a>`; }
   function countryLink(id, name) { return `<a href="#" data-country="${id}">${esc(name)}</a>`; }
+
+  const TABS = [['overview', 'Overview'], ['land', 'Land'], ['people', 'People'], ['politics', 'Politics'], ['economy', 'Economy'], ['military', 'Military']];
 
   function showNation(n) {
     const s = n.stats, r = n.results, t = n.terr;
@@ -370,9 +538,17 @@
       `<li>${countryLink(c.id, c.name)} <small>${fmtArea(c.area)} · ${c.pct < 0.1 ? '<0.1' : c.pct.toFixed(1)}% of it</small></li>`).join('');
     const cities = s.cities.map(c => `<li>${c.capital ? '★ ' : ''}${esc(c.name)} <small>${fmtBig(c.pop)}</small></li>`).join('');
     const hdiCls = s.hdi >= 0.8 ? 'good' : s.hdi >= 0.7 ? 'ok' : s.hdi >= 0.55 ? 'meh' : 'bad';
+    const cmp = Realism.compare(s);
+    const maxProvPop = s.provinces ? Math.max(...s.provinces.map(p => p.pop)) : 1;
+    const provinces = s.provinces ? `<table class="ptable"><thead><tr><th>Province</th><th>Seat</th><th>Area</th><th>Population</th></tr></thead><tbody>${
+      s.provinces.slice().sort((a, b) => b.pop - a.pop).map(p => `<tr><td>${esc(p.name)}</td><td>${p.capital ? '★ ' : ''}${esc(p.seat)}</td><td>${fmtShort(p.area)} km²</td>
+        <td><span class="pbar"><i style="width:${p.pop / maxProvPop * 100}%"></i></span>${fmtShort(p.pop)}</td></tr>`).join('')}</tbody></table>` : '';
+    const tabs = TABS.map(([id, label]) => `<button class="tab${state.tab === id ? ' on' : ''}" data-tab="${id}">${label}</button>`).join('');
+    const pane = (id, html) => `<div class="pane${state.tab === id ? ' on' : ''}" data-pane="${id}">${html}</div>`;
+
     openDrawer(`
       <div class="nation-head">
-        <div class="flag">${s.flag}</div>
+        <div class="flag hero">${s.flag}<span class="sheen"></span></div>
         <h2>${esc(s.name)}</h2>
         <p class="motto">“${esc(s.motto)}”</p>
         <div class="chips">
@@ -380,74 +556,100 @@
           <span>${t.landlocked ? 'Landlocked' : 'Coastal'}</span><span>${esc(r.size)}</span>
         </div>
       </div>
-      <section><h3>🗺️ Geography</h3>
-        ${row('Area', fmtArea(s.area))}
-        ${row('Coastline', t.landlocked ? 'None (landlocked)' : fmtInt(t.coastlineKm) + ' km')}
-        ${row('Border style', esc(r.borders || 'Natural & Winding'))}
-        ${row('Terrain', esc(r.terrain))}
-        ${row('Climate', esc(s.climate))}
-        ${row('Highest point', `${esc(s.highestName)} (${fmtInt(s.highest)} m)`)}
-        ${s.river ? row('Longest river', `${esc(s.river)} (${fmtInt(s.riverKm)} km)`) : ''}
-        ${row('Capital', '★ ' + esc(s.capital))}
-        <div class="kv block"><span>Borders</span><b>${borders.length ? borders.join(', ') : 'None — an island unto itself'}</b></div>
-        <div class="kv block"><span>Land carved from</span><ul class="mini">${carved}</ul></div>
-      </section>
-      <section><h3>👥 People</h3>
-        ${row('Population', fmtBig(s.population))}
-        ${row('Density', `${s.density < 10 ? s.density.toFixed(1) : fmtInt(s.density)} /km² <small>(${esc(r.population)})</small>`)}
-        ${row('Demonym', esc(s.demonym))}
-        ${row('Language', esc(s.language))}
-        ${row('Religion', esc(r.religion))}
-        ${row('Urbanization', s.urban + '%')}
-        ${row('Life expectancy', s.lifeExp + ' years')}
-        ${row('Literacy', s.literacy + '%')}
-        ${row('Internet users', s.internet + '%')}
-        ${row('Happiness', `${s.happiness} / 10 ${bar(s.happiness, 10)}`)}
-        <div class="kv block"><span>Major cities</span><ul class="mini">${cities}</ul></div>
-      </section>
-      <section><h3>🏛️ Politics</h3>
-        ${row('Ideology', esc(r.ideology))}
-        ${row('Government', esc(r.government))}
-        ${row('Political doctrine', esc(r.doctrine))}
-        ${row('Head of state', esc(s.leader))}
-        ${row('Ruling party', esc(s.party))}
-        ${row('Freedom index', `${s.freedom} / 100 ${bar(s.freedom, 100)}`)}
-        ${row('Clean govt. index', `${s.corruption} / 100 ${bar(s.corruption, 100)}`)}
-        ${row('Stability', esc(r.stability))}
-        ${row('Founded', `${esc(s.founded)} <small>(${esc(r.founded)})</small>`)}
-        ${row('National day', esc(s.holiday))}
-      </section>
-      <section><h3>💰 Economy</h3>
-        ${row('HDI', `${s.hdi.toFixed(3)} <small>(${esc(r.development)})</small> ${bar(s.hdi, 1, hdiCls)}`)}
-        ${row('System', esc(r.economy))}
-        ${row('GDP (nominal)', fmtMoney(s.gdp))}
-        ${row('GDP per capita', '$' + fmtInt(s.gdppc))}
-        ${row('GDP growth', (s.growth > 0 ? '+' : '') + s.growth + '%')}
-        ${row('Inflation', s.inflation + '%')}
-        ${row('Unemployment', s.unemployment + '%')}
-        ${row('Gini (inequality)', s.gini)}
-        ${row('Public debt', s.debt + '% of GDP')}
-        ${row('Main resource', esc(r.resource))}
-        ${row('Other resources', s.secondary.map(esc).join(', '))}
-        ${row('Currency', `${esc(s.currency)} (${esc(s.currencyCode)})`)}
-      </section>
-      <section><h3>🛡️ Military</h3>
-        ${row('Power', esc(r.military))}
-        ${row('Active personnel', fmtInt(s.personnel))}
-        ${row('Defence budget', s.milBudget + '% of GDP (' + fmtMoney(s.gdp * s.milBudget / 100) + ')')}
-        ${row('Nuclear warheads', s.warheads ? fmtInt(s.warheads) : 'None')}
-      </section>
-      ${s.flagMeaning ? `<section><h3>🏳️ Flag symbolism</h3><ul class="flag-meaning">${s.flagMeaning.map(m => `<li>${m}</li>`).join('')}</ul></section>` : ''}
-      <section><h3>🎌 Odds &amp; ends</h3>
-        ${row('National animal', esc(s.animal))}
-        ${row('Time zone', esc(s.timezone))}
-        ${row('Calling code', esc(s.callingCode))}
-        ${row('Internet TLD', esc(s.tld))}
-        ${row('Drives on the', esc(s.drives))}
-      </section>
+      <nav class="tabs">${tabs}</nav>
+      ${pane('overview', `
+        <div class="tiles">
+          ${tile('Population', fmtShort(s.population), cmp.population ? `≈ ${esc(cmp.population)}` : '')}
+          ${tile('Area', fmtShort(s.area) + ' km²', cmp.area ? `≈ ${esc(cmp.area)}` : '')}
+          ${tile('GDP', '$' + fmtShort(s.gdp), cmp.gdp ? `≈ ${esc(cmp.gdp)}` : '')}
+          ${tile('HDI', s.hdi.toFixed(3), cmp.hdi ? `≈ ${esc(cmp.hdi)}` : '')}
+          <div class="tile wide"><small>Capital</small><b>★ ${esc(s.capital)}</b></div>
+          <div class="tile full"><small>Head of state</small><b>${esc(s.leader)}</b><em>${esc(r.government)} · ${esc(r.ideology)}</em></div>
+        </div>
+        ${s.profile ? `<section><h3>National profile</h3>${radar(s.profile)}</section>` : ''}
+        <section><h3>Flag symbolism</h3><ul class="flag-meaning">${(s.flagMeaning || []).map(m => `<li>${m}</li>`).join('')}</ul></section>`)}
+      ${pane('land', `
+        <section><h3>Geography</h3>
+          ${row('Area', fmtArea(s.area))}
+          ${row('Coastline', t.landlocked ? 'None (landlocked)' : fmtInt(t.coastlineKm) + ' km')}
+          ${row('Border style', esc(r.borders || 'Natural & Winding'))}
+          ${row('Terrain', esc(r.terrain))}
+          ${row('Climate', esc(s.climate))}
+          ${row('Highest point', `${esc(s.highestName)} (${fmtInt(s.highest)} m)`)}
+          ${s.river ? row('Longest river', `${esc(s.river)} (${fmtInt(s.riverKm)} km)`) : ''}
+          ${row('Time zone', esc(s.timezone))}
+          <div class="kv block"><span>Borders</span><b>${borders.length ? borders.join(', ') : 'None — an island unto itself'}</b></div>
+          <div class="kv block"><span>Land carved from</span><ul class="mini">${carved}</ul></div>
+        </section>
+        ${provinces ? `<section><h3>${s.provinces.length} ${/State/.test(s.provinces[0].name) ? 'states' : 'provinces'}</h3>${provinces}</section>` : ''}`)}
+      ${pane('people', `
+        <div class="tiles">
+          ${tile('Population', fmtShort(s.population))}
+          ${tile('Density', (s.density < 10 ? s.density.toFixed(1) : fmtInt(s.density)) + '/km²', esc(r.population))}
+          ${tile('Life expectancy', s.lifeExp + ' yrs')}
+        </div>
+        <section><h3>Population over time</h3>${lineChart(s.popHistory || [])}</section>
+        ${s.religions ? `<section><h3>Religion</h3>${stackBar(s.religions)}</section>` : ''}
+        ${s.languages ? `<section><h3>Languages</h3>${stackBar(s.languages)}</section>` : ''}
+        <section><h3>Society</h3>
+          ${row('Demonym', esc(s.demonym))}
+          ${row('Urbanization', s.urban + '%')}
+          ${row('Literacy', s.literacy + '%')}
+          ${row('Internet users', s.internet + '%')}
+          ${row('Happiness', `${s.happiness} / 10 ${bar(s.happiness, 10)}`)}
+          ${row('National animal', esc(s.animal))}
+          <div class="kv block"><span>Major cities</span><ul class="mini">${cities}</ul></div>
+        </section>`)}
+      ${pane('politics', `
+        <section><h3>Government</h3>
+          ${row('Ideology', esc(r.ideology))}
+          ${row('System', esc(r.government))}
+          ${row('Political doctrine', esc(r.doctrine))}
+          ${row('Head of state', esc(s.leader))}
+          ${row('Ruling party', esc(s.party))}
+          ${row('Stability', esc(r.stability))}
+          ${row('Freedom index', `${s.freedom} / 100 ${bar(s.freedom, 100)}`)}
+          ${row('Clean govt. index', `${s.corruption} / 100 ${bar(s.corruption, 100)}`)}
+          ${row('Founded', `${esc(s.founded)} <small>(${esc(r.founded)})</small>`)}
+          ${row('National day', esc(s.holiday))}
+        </section>
+        ${s.parliament ? `<section><h3>Legislature</h3>${hemicycle(s.parliament)}</section>` : ''}`)}
+      ${pane('economy', `
+        <div class="tiles">
+          ${tile('GDP', '$' + fmtShort(s.gdp))}
+          ${tile('Per capita', '$' + fmtInt(s.gdppc))}
+          ${tile('Growth', (s.growth > 0 ? '+' : '') + s.growth + '%')}
+        </div>
+        ${s.sectors ? `<section><h3>Economy by sector</h3>${stackBar(s.sectors, 'of GDP')}</section>` : ''}
+        <section><h3>Indicators</h3>
+          ${row('HDI', `${s.hdi.toFixed(3)} <small>(${esc(r.development)})</small> ${bar(s.hdi, 1, hdiCls)}`)}
+          ${row('System', esc(r.economy))}
+          ${row('Inflation', s.inflation + '%')}
+          ${row('Unemployment', s.unemployment + '%')}
+          ${row('Gini (inequality)', s.gini)}
+          ${row('Public debt', s.debt + '% of GDP')}
+          ${row('Main resource', esc(r.resource))}
+          ${row('Other resources', s.secondary.map(esc).join(', '))}
+          ${row('Currency', `${esc(s.currency)} (${esc(s.currencyCode)})`)}
+          ${row('Calling code', esc(s.callingCode))}
+          ${row('Internet TLD', esc(s.tld))}
+          ${row('Drives on the', esc(s.drives))}
+        </section>`)}
+      ${pane('military', `
+        <div class="tiles">
+          ${tile('Power', esc(r.military))}
+          ${tile('Personnel', fmtShort(s.personnel))}
+          ${tile('Warheads', s.warheads ? fmtInt(s.warheads) : 'None')}
+        </div>
+        ${s.forces ? `<section><h3>Armed forces</h3>${stackBar(s.forces, 'of personnel')}</section>` : ''}
+        <section><h3>Defence</h3>
+          ${row('Defence budget', s.milBudget + '% of GDP')}
+          ${row('Annual spending', fmtMoney(s.gdp * s.milBudget / 100))}
+          ${row('Doctrine', esc(r.doctrine))}
+        </section>`)}
       <div class="drawer-actions">
         <button data-act="zoom" data-slot="${n.slot}">🔍 Zoom to nation</button>
-        <button data-act="delete" data-slot="${n.slot}" class="danger">🗑️ Dissolve nation</button>
+        <button data-act="delete" data-slot="${n.slot}" class="danger">🗑️ Dissolve</button>
       </div>`);
     zoomToGeometry(n.geometry, 900);
   }
@@ -463,11 +665,11 @@
         <h2>${esc(info.name)}</h2>
         <div class="chips"><span>Real-world country</span><span>${esc(info.continent)}</span></div>
       </div>
-      <section><h3>🗺️ Overview</h3>
+      <section><h3>Overview</h3>
         ${row('Continent', esc(info.continent))}
         ${row('Approx. land area', info.area > 0 ? fmtArea(info.area) : 'Too small to measure')}
       </section>
-      <section><h3>🏴 Territory lost to your nations</h3>
+      <section><h3>Territory lost to your nations</h3>
         ${lost ? `<ul class="mini">${lost}</ul>` : '<p class="muted">None yet. Spin the wheels — maybe your next nation lands here!</p>'}
       </section>`);
   }
@@ -483,10 +685,29 @@
       ${list ? `<ul class="nation-list">${list}</ul>` : '<p class="muted pad">No nations yet. Spin the wheels to found your first!</p>'}`);
   }
 
+  const RANK_COLS = [
+    ['population', 'Pop.', s => s.population, fmtShort], ['gdp', 'GDP', s => s.gdp, v => '$' + fmtShort(v)],
+    ['gdppc', 'Per cap.', s => s.gdppc, v => '$' + fmtShort(v)], ['area', 'Area', s => s.area, v => fmtShort(v)],
+    ['hdi', 'HDI', s => s.hdi, v => v.toFixed(2)], ['personnel', 'Army', s => s.personnel, fmtShort],
+  ];
+
+  function showRankings() {
+    const col = RANK_COLS.find(c => c[0] === state.rankKey) || RANK_COLS[1];
+    const sorted = state.nations.slice().sort((a, b) => col[2](b.stats) - col[2](a.stats));
+    const head = RANK_COLS.map(c => `<th class="${c[0] === col[0] ? 'on' : ''}" data-rank="${c[0]}">${c[1]}${c[0] === col[0] ? ' ▾' : ''}</th>`).join('');
+    const rows = sorted.map((n, i) => `<tr data-nation="${n.slot}"><td class="rk">${i + 1}</td><td class="nm"><span class="flag xs">${n.stats.flag}</span>${esc(n.stats.root)}</td>${
+      RANK_COLS.map(c => `<td class="${c[0] === col[0] ? 'on' : ''}">${c[3](c[2](n.stats))}</td>`).join('')}</tr>`).join('');
+    openDrawer(`
+      <div class="nation-head real"><h2>World Rankings</h2><div class="chips"><span>Your ${state.nations.length} nations</span><span>Tap a column to sort</span></div></div>
+      ${rows ? `<div class="rank-wrap"><table class="rank"><thead><tr><th>#</th><th>Nation</th>${head}</tr></thead><tbody>${rows}</tbody></table></div>`
+        : '<p class="muted pad">Found some nations to see how they stack up.</p>'}`);
+  }
+
   function showReveal(n) {
     const s = n.stats;
+    const cmp = Realism.compare(s);
     $('reveal-body').innerHTML = `
-      <div class="flag big">${s.flag}</div>
+      <div class="flag big hero">${s.flag}<span class="sheen"></span></div>
       <p class="eyebrow">A new nation is born</p>
       <h2>${esc(s.name)}</h2>
       <p class="motto">“${esc(s.motto)}”</p>
@@ -497,7 +718,8 @@
         <div><small>HDI</small><b>${s.hdi.toFixed(3)}</b></div>
         <div><small>GDP</small><b>${fmtMoney(s.gdp)}</b></div>
         <div><small>Leader</small><b>${esc(s.leader)}</b></div>
-      </div>`;
+      </div>
+      <p class="compare">About as populous as <b>${esc(cmp.population)}</b>, as big as <b>${esc(cmp.area)}</b>, and as rich as <b>${esc(cmp.gdp)}</b>.</p>`;
     $('reveal').classList.remove('hidden');
     $('reveal').dataset.slot = n.slot;
   }
@@ -517,12 +739,51 @@
     closeDrawer();
   }
 
+  /* ================= news ticker ================= */
+
+  function headlinesFor(n) {
+    const s = n.stats, r = n.results;
+    if (!n._nb) n._nb = WorldGen.analyzeCells(n.cells).neighbors.filter(x => x.type === 'country').map(x => WorldGen.countryInfo(x.id).name);
+    const nb = n._nb.length ? pick(n._nb) : null;
+    const prov = s.provinces ? pick(s.provinces).name : s.capital;
+    const city = pick(s.cities).name;
+    const h = [
+      `${s.leader} of ${s.root} vows to ${pick(['modernise the armed forces', 'root out corruption', 'build a high-speed railway', `double ${s.secondary[0].toLowerCase()} exports`, 'host the next World Cup'])}`,
+      `${s.root}'s economy ${s.growth >= 0 ? 'grows' : 'shrinks'} ${Math.abs(s.growth)}% as ${r.resource.toLowerCase()} ${pick(['prices climb', 'output surges', 'exports slow', 'markets wobble'])}`,
+      `Crowds fill the streets of ${s.capital} for National Day on ${s.holiday}`,
+      `${s.currency} ${pick(['hits a record high', 'slides against the dollar', 'holds steady'])} as inflation sits at ${s.inflation}%`,
+      `${city} unveils plans for a ${pick(['new airport', 'giant stadium', 'tech district', 'harbour expansion', 'national museum'])}`,
+      `Scientists spot a rare ${s.animal.toLowerCase()} in the wilds of ${prov}`,
+    ];
+    if (nb) h.push(pick([`${s.root} and ${nb} sign a historic trade pact`, `Border talks between ${s.root} and ${nb} enter their ${pick(['third', 'fifth', 'ninth'])} week`, `${nb} protests ${s.root}'s new border fence`, `Joint ${s.root}–${nb} railway opens to passengers`]));
+    if (r.stability === 'Unstable' || r.stability === 'On the Brink') h.push(`Protests spread across ${prov} as tensions rise in ${s.root}`);
+    if (s.warheads) h.push(`${s.root} parades ${s.warheads > 200 ? 'its vast' : 'its'} nuclear arsenal through ${s.capital}`);
+    if (r.government === 'Military Junta') h.push(`${s.leader} postpones elections in ${s.root} "until further notice"`);
+    if (r.religion === 'Machine Worship') h.push(`${s.root}'s high priests bless the nation's newest supercomputer`);
+    if (s.hdi > 0.9) h.push(`${s.root} tops global quality-of-life rankings again`);
+    return h;
+  }
+
+  function updateTicker() {
+    const items = state.nations.length
+      ? state.nations.flatMap(n => headlinesFor(n).sort(() => Math.random() - 0.5).slice(0, 3)).sort(() => Math.random() - 0.5).slice(0, 10)
+      : ['Cartographers on standby as the world awaits a new nation', 'Spin the wheels to make history', 'Diplomats warn: new borders could appear anywhere, anytime'];
+    const el = $('ticker-text');
+    el.innerHTML = items.map(t => `<span>${esc(t)}</span>`).join('<i>◆</i>');
+    const track = el.parentElement.clientWidth || 600;
+    const dur = Math.max(25, (el.scrollWidth + track) / 70);
+    el.style.setProperty('--ticker-from', track + 'px');
+    el.style.animationDuration = dur + 's';
+    el.classList.remove('run'); void el.offsetWidth; el.classList.add('run');
+  }
+
   /* ================= persistence ================= */
 
   function save() {
     try {
       const data = state.nations.map(n => ({
-        slot: n.slot, color: n.color, geometry: n.geometry, rle: n.rle, results: n.results, terr: n.terr, stats: n.stats, created: n.created,
+        slot: n.slot, color: n.color, geometry: n.geometry, provinceLines: n.provinceLines, rle: n.rle, results: n.results,
+        terr: n.terr, stats: n.stats, created: n.created,
       }));
       localStorage.setItem(STORE_KEY, JSON.stringify({ nextSlot: state.nextSlot, nations: data }));
     } catch (e) { /* storage unavailable or full: the game still works for this session */ }
@@ -588,6 +849,7 @@
     $('btn-auto').addEventListener('click', autoSpin);
     $('btn-restart').addEventListener('click', () => { if (!state.busy) resetSpins(); });
     $('btn-nations').addEventListener('click', showNationList);
+    $('btn-rankings').addEventListener('click', showRankings);
     $('btn-reset').addEventListener('click', resetWorld);
     $('btn-sound').addEventListener('click', () => {
       Sound.enabled = !Sound.enabled;
@@ -604,7 +866,17 @@
     });
     $('drawer-close').addEventListener('click', closeDrawer);
 
-    $('drawer-body').addEventListener('click', ev => {
+    const body = $('drawer-body');
+    body.addEventListener('click', ev => {
+      const tabBtn = ev.target.closest('[data-tab]');
+      if (tabBtn) {
+        state.tab = tabBtn.dataset.tab;
+        body.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b === tabBtn));
+        body.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.dataset.pane === state.tab));
+        return;
+      }
+      const rk = ev.target.closest('[data-rank]');
+      if (rk) { state.rankKey = rk.dataset.rank; showRankings(); return; }
       const a = ev.target.closest('[data-nation],[data-country],[data-act]');
       if (!a) return;
       ev.preventDefault();
@@ -613,14 +885,22 @@
       else if (a.dataset.nation) { const n = state.nations.find(x => x.slot === +a.dataset.nation); if (n) showNation(n); }
       else if (a.dataset.country) showCountry(+a.dataset.country);
     });
+    // Chart tooltips
+    body.addEventListener('mousemove', ev => {
+      const t = ev.target.closest('[data-tip]');
+      if (t) tip(ev, t.dataset.tip); else hideTip();
+    });
+    body.addEventListener('mouseleave', hideTip);
 
     $('reveal-stats').addEventListener('click', () => {
       $('reveal').classList.add('hidden');
       const n = state.nations.find(x => x.slot === +$('reveal').dataset.slot);
+      state.tab = 'overview';
       if (n) showNation(n);
       resetSpins();
     });
     $('reveal-again').addEventListener('click', () => { $('reveal').classList.add('hidden'); closeDrawer(); resetSpins(); });
+    $('ticker-text').addEventListener('animationiteration', updateTicker);
 
     document.addEventListener('keydown', ev => {
       if (ev.code === 'Space' && !ev.target.closest('input,button,textarea') && $('reveal').classList.contains('hidden')) {
