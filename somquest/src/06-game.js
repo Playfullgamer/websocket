@@ -55,7 +55,7 @@ function startChapter(ci) {
 
 function startEndless() {
   const r = G.run;
-  r.steps = [{ type: 'card', title: 'TOETSWEEK', sub: 'Every boss. Endless waves. No mercy.', label: 'ENDLESS MODE', clock: `BEST: WAVE ${Save.data.endlessBest}` }];
+  r.steps = [{ type: 'card', title: 'TOETSWEEK', sub: 'Elke baas. Eindeloze golven. Geen genade.', label: 'EINDELOZE MODUS', clock: `RECORD: GOLF ${Save.data.endlessBest}` }];
   r.si = -1; r.hits = 0; r.time = 0; r.endlessN = 0;
   G.theme = 'rooster'; G.hpMul = 1;
   resetArena(); freshPlayer();
@@ -107,7 +107,7 @@ function nextStep() {
       G.cutscene = { id: st.id, t: 0, ev: {} };
       break;
     case 'card':
-      G.card = { t: 0, title: st.title || ch.title, sub: st.sub || ch.sub, label: st.label || `CHAPTER ${ch.num}`, clock: st.clock || ch.clock };
+      G.card = { t: 0, title: st.title || ch.title, sub: st.sub || ch.sub, label: st.label || `HOOFDSTUK ${ch.num}`, clock: st.clock || ch.clock };
       Snd.sfx.ping();
       break;
     case 'dialog':
@@ -119,7 +119,7 @@ function nextStep() {
     case 'upgrade': openUpgrade(); break;
     case 'heal':
       G.player.hp = G.player.maxhp; G.player.special = 1;
-      Snd.sfx.heal(); floatText(G.player.x, G.player.y - 30, 'FULL HEAL + INLEVEREN READY', '#2fbf71', 16, { dur: 1.6 });
+      Snd.sfx.heal(); floatText(G.player.x, G.player.y - 30, 'VOLLEDIG GENEZEN + INLEVEREN KLAAR', '#2fbf71', 16, { dur: 1.6 });
       burst(G.player.x, G.player.y, '#2fbf71', 24, 200);
       nextStep();
       break;
@@ -135,7 +135,7 @@ function startWave(st) {
   const r = G.run;
   r.waveNum++;
   r.wave = { t: 0, queue: st.groups.map(g => ({ at: g[0], type: g[1], n: g[2] })).sort((a, b) => a.at - b.at), clearT: 0, cleared: false };
-  G.banner = { text: st.endless ? `WAVE ${st.endless}` : `WAVE ${r.waveNum}/${r.waveTotal}`, t: 0 };
+  G.banner = { text: st.endless ? `GOLF ${st.endless}` : `GOLF ${r.waveNum}/${r.waveTotal}`, t: 0 };
 }
 
 function updateWave(dt) {
@@ -149,7 +149,7 @@ function updateWave(dt) {
   const alive = G.enemies.some(e => !e.dead);
   if (!alive && w.queue.length) w.t = Math.max(w.t, w.queue[0].at - 0.5);
   if (!alive && !w.queue.length) {
-    if (!w.cleared) { w.cleared = true; floatText(W / 2, H / 2 - 30, 'CLEARED!', '#2fbf71', 36, { dur: 1.2, vy: -12 }); Snd.sfx.confirm(); }
+    if (!w.cleared) { w.cleared = true; floatText(W / 2, H / 2 - 30, 'GEHAALD!', '#2fbf71', 36, { dur: 1.2, vy: -12 }); Snd.sfx.confirm(); }
     w.clearT += dt;
     if (w.clearT > 1.2) { G.run.wave = null; nextStep(); }
   }
@@ -176,7 +176,7 @@ function updateDyingBoss(rdt) {
     ringFx(db.x, db.y, '#ffffff', 650, 0.9, 22); ringFx(db.x, db.y, db.e.d.color, 420, 0.7, 12);
     burst(db.x, db.y, [db.e.d.color, '#ffffff', '#ffd84a'], 90, 620, { life: 2 });
     debris(db.x, db.y, '#ffffff', 22, 420);
-    floatText(W / 2, H / 2 - 20, 'DEFEATED', '#ffd84a', 46, { dur: 1.8, vy: -8 });
+    floatText(W / 2, H / 2 - 20, 'VERSLAGEN', '#ffd84a', 46, { dur: 1.8, vy: -8 });
   }
   if (db.t > 3.4) {
     G.dyingBoss = null; G.boss = null;
@@ -274,7 +274,7 @@ function drawDialog() {
     ctx.fillStyle = 'rgba(2,14,8,0.95)'; rr(x, y, w, h, 8); ctx.fill();
     ctx.strokeStyle = '#4dff88'; ctx.lineWidth = 2; rr(x, y, w, h, 8); ctx.stroke();
     ctx.fillStyle = '#4dff88'; ctx.fillRect(x, y, w, 26);
-    txt('SYSTEM LOG — /var/somtoday/mentor.log', x + 12, y + 13, { size: 12, font: MONO, color: '#02140a' });
+    txt('SYSTEEMLOG — /var/somtoday/mentor.log', x + 12, y + 13, { size: 12, font: MONO, color: '#02140a' });
     const lines = wrapText(shown + (Math.floor(G.t * 3) % 2 ? '█' : ''), w - 40, `700 17px ${MONO}`);
     lines.forEach((l, i) => txt(l, x + 20, y + 50 + i * 24, { size: 17, font: MONO, color: '#4dff88' }));
     ctx.fillStyle = 'rgba(0,0,0,0.25)'; for (let i = 0; i < h; i += 3) ctx.fillRect(x, y + i, w, 1);
@@ -308,7 +308,7 @@ function drawDialog() {
       txt(l, x + 134, ly, { size: 19, weight: 600, color: '#eef4ff' });
     });
     if (done) txt('▼', x + w - 26, y + h - 20 + Math.sin(G.t * 6) * 3, { size: 14, color: sp.color, align: 'center' });
-    txt('TAB skip', x + w - 50, y + h - 20, { size: 10, color: 'rgba(255,255,255,0.3)', align: 'right' });
+    txt('TAB overslaan', x + w - 50, y + h - 20, { size: 10, color: 'rgba(255,255,255,0.3)', align: 'right' });
   }
   ctx.restore();
 }
@@ -350,8 +350,8 @@ function drawUpgrade() {
   ctx.fillStyle = `rgba(3,6,16,${0.75 * clamp(u.t / 0.3, 0, 1)})`; ctx.fillRect(0, 0, W, H);
   const k0 = ease.outCubic(clamp(u.t / 0.4, 0, 1));
   ctx.globalAlpha = k0;
-  txt('PICK YOUR SCHOOL SUPPLIES', W / 2, 78 - (1 - k0) * 20, { size: 30, weight: 900, align: 'center', color: '#ffffff' });
-  txt('Locker #404 — Lost & Found', W / 2, 108, { size: 14, align: 'center', color: th.accent, weight: 700 });
+  txt('KIES JE SCHOOLSPULLEN', W / 2, 78 - (1 - k0) * 20, { size: 30, weight: 900, align: 'center', color: '#ffffff' });
+  txt('Kluisje #404 — Gevonden voorwerpen', W / 2, 108, { size: 14, align: 'center', color: th.accent, weight: 700 });
   ctx.globalAlpha = 1;
   const n = u.choices.length, cw = 236, ch = 290, gap = 28;
   const x0 = W / 2 - (n * cw + (n - 1) * gap) / 2;
@@ -379,7 +379,7 @@ function drawUpgrade() {
     ctx.fillText(c.icon, cw / 2, 48 + (sel ? Math.sin(G.t * 5) * 4 : 0));
     txt(c.name, cw / 2, 120, { size: 18, weight: 900, align: 'center' });
     const lv = upgradeCount(c.id);
-    const tag = lv ? `LV ${lv} → ${lv + 1}` : 'NEW';
+    const tag = lv ? `NIV ${lv} → ${lv + 1}` : 'NIEUW';
     ctx.font = `900 11px ${FONT}`;
     const tw = ctx.measureText(tag).width + 16;
     ctx.fillStyle = lv ? '#ffd84a' : '#2fbf71'; rr(cw / 2 - tw / 2, 136, tw, 20, 10); ctx.fill();
@@ -454,11 +454,11 @@ function drawBanner() {
 function fmtTime(s) { s = Math.floor(s); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
 
 function teacherComment(g) {
-  if (g >= 9.5) return 'Uitstekend! Automatically generated comment: ...wow.';
-  if (g >= 8) return 'Goed bezig! Keep this up.';
-  if (g >= 6.5) return 'Ruim voldoende. Solid work.';
+  if (g >= 9.5) return 'Uitstekend! Automatisch gegenereerde opmerking: ...wauw.';
+  if (g >= 8) return 'Goed bezig! Ga zo door.';
+  if (g >= 6.5) return 'Ruim voldoende. Netjes gewerkt.';
   if (g >= 5.5) return 'Voldoende. Let op je inzet.';
-  return 'Onvoldoende... but hey, you survived.';
+  return 'Onvoldoende... maar hé, je hebt het overleefd.';
 }
 
 function drawChReport() {
@@ -471,7 +471,7 @@ function drawChReport() {
   ctx.fillStyle = '#0d1630'; rr(x, y, w, h, 18); ctx.fill();
   ctx.strokeStyle = th.accent; ctx.lineWidth = 2; rr(x, y, w, h, 18); ctx.stroke();
   ctx.fillStyle = th.accent; rr(x, y, w, 54, 18); ctx.fill(); ctx.fillRect(x, y + 36, w, 18);
-  txt(`CHAPTER ${c.ch.num} COMPLETE`, x + 24, y + 27, { size: 22, weight: 900, color: '#071022' });
+  txt(`HOOFDSTUK ${c.ch.num} VOLTOOID`, x + 24, y + 27, { size: 22, weight: 900, color: '#071022' });
   txt(c.ch.title, x + w - 24, y + 27, { size: 14, weight: 800, color: '#071022', align: 'right' });
   const shownG = 1 + (c.grade - 1) * ease.outCubic(clamp((t - 0.5) / 1.2, 0, 1));
   if (t > 0.5 && t < 1.7 && Math.floor(t * 30) % 2) Snd.sfx.tick();
@@ -480,7 +480,7 @@ function drawChReport() {
   ctx.fillStyle = col; rr(x + 40, y + 90, 160, 130, 16); ctx.fill();
   txt(fmtGrade(shownG), x + 120, y + 150, { size: 56, weight: 900, align: 'center' });
   txt('CIJFER', x + 120, y + 200, { size: 12, weight: 900, align: 'center', color: 'rgba(255,255,255,0.8)' });
-  const rows = [['Hits taken', c.hits], ['Time', fmtTime(c.time)], ['Best combo', c.combo], ['Retakes', c.retakes], ['Score', G.score.toLocaleString('nl-NL')]];
+  const rows = [['Keer geraakt', c.hits], ['Tijd', fmtTime(c.time)], ['Beste combo', c.combo], ['Herkansingen', c.retakes], ['Score', G.score.toLocaleString('nl-NL')]];
   rows.forEach((r, i) => {
     if (t < 0.6 + i * 0.12) return;
     txt(r[0], x + 240, y + 100 + i * 28, { size: 15, weight: 600, color: '#9fb3d1' });
@@ -489,8 +489,11 @@ function drawChReport() {
   if (c.landed) {
     ctx.fillStyle = 'rgba(77,255,166,0.08)'; rr(x + 40, y + 248, w - 80, 46, 10); ctx.fill();
     txt('MENTOR.EXE:', x + 56, y + 271, { size: 12, weight: 900, color: '#4dffa6', font: MONO });
-    txt(teacherComment(c.grade), x + 160, y + 271, { size: 14, weight: 600, color: '#d9fff0' });
-    if (Math.floor(G.t * 2) % 2) txt('click / enter to continue', x + w / 2, y + h - 22, { size: 13, align: 'center', color: 'rgba(255,255,255,0.5)' });
+    const comment = teacherComment(c.grade);
+    let cs = 14;
+    for (; cs > 10; cs--) { ctx.font = `600 ${cs}px ${FONT}`; if (ctx.measureText(comment).width <= w - 220) break; }
+    txt(comment, x + 160, y + 271, { size: cs, weight: 600, color: '#d9fff0' });
+    if (Math.floor(G.t * 2) % 2) txt('klik / enter om verder te gaan', x + w / 2, y + h - 22, { size: 13, align: 'center', color: 'rgba(255,255,255,0.5)' });
   }
   ctx.restore();
 }
@@ -498,13 +501,13 @@ function drawChReport() {
 function drawPause() {
   ctx.save();
   ctx.fillStyle = 'rgba(3,6,16,0.8)'; ctx.fillRect(0, 0, W, H);
-  glitchText('PAUSED', W / 2, 150, 54, '#ffffff', Math.random() < 0.05 ? 2 : 0.3);
-  txt('Even pauze. Grab a stroopwafel.', W / 2, 195, { size: 15, italic: true, weight: 600, align: 'center', color: '#9fb3d1' });
+  glitchText('GEPAUZEERD', W / 2, 150, 54, '#ffffff', Math.random() < 0.05 ? 2 : 0.3);
+  txt('Even pauze. Pak een stroopwafel.', W / 2, 195, { size: 15, italic: true, weight: 600, align: 'center', color: '#9fb3d1' });
   drawMenu(pauseItems(), G.pauseSel, 260);
   ctx.restore();
 }
 function pauseItems() {
-  return [{ id: 'resume', label: 'RESUME' }, { id: 'sound', label: `SOUND: ${Snd.muted ? 'OFF' : 'ON'}` }, { id: 'title', label: 'QUIT TO TITLE' }, { id: 'quit', label: 'BACK TO SOMTODAY' }];
+  return [{ id: 'resume', label: 'VERDER SPELEN' }, { id: 'sound', label: `GELUID: ${Snd.muted ? 'UIT' : 'AAN'}` }, { id: 'title', label: 'NAAR HET TITELSCHERM' }, { id: 'quit', label: 'TERUG NAAR SOMTODAY' }];
 }
 
 // generic vertical menu
@@ -558,7 +561,7 @@ function drawHUD() {
   txt('SOM', 46, 19, { size: 16, weight: 900 });
   ctx.font = `900 16px ${FONT}`;
   txt('QUEST', 46 + ctx.measureText('SOM').width, 19, { size: 16, weight: 900, color: th.accent });
-  const label = r.mode === 'endless' ? `TOETSWEEK · WAVE ${r.endlessN}` : `CH.${CHAPTERS[r.chapter].num} · ${CHAPTERS[r.chapter].title}`;
+  const label = r.mode === 'endless' ? `TOETSWEEK · GOLF ${r.endlessN}` : `H${CHAPTERS[r.chapter].num} · ${CHAPTERS[r.chapter].title}`;
   txt(label, 46, 38, { size: 10, weight: 800, color: '#9fb3d1' });
   // lives
   txt('LEVENS', 214, 14, { size: 9, weight: 900, color: '#9fb3d1' });
@@ -573,7 +576,7 @@ function drawHUD() {
   // inleveren meter
   const mx = 214 + Math.max(5, p.maxhp) * 24 + 20, mw = 170;
   const ready = p.special >= 1;
-  txt(ready ? 'INLEVEREN READY! [E]' : 'INLEVEREN [E]', mx, 14, { size: 9, weight: 900, color: ready ? '#ffd84a' : '#9fb3d1' });
+  txt(ready ? 'INLEVEREN KLAAR! [E]' : 'INLEVEREN [E]', mx, 14, { size: 9, weight: 900, color: ready ? '#ffd84a' : '#9fb3d1' });
   ctx.fillStyle = 'rgba(255,255,255,0.08)'; rr(mx, 26, mw, 14, 7); ctx.fill();
   const mg = ctx.createLinearGradient(mx, 0, mx + mw, 0);
   mg.addColorStop(0, '#ff9f43'); mg.addColorStop(1, '#ffd84a');
@@ -589,7 +592,7 @@ function drawHUD() {
   }
   // score + clock
   txt(G.score.toLocaleString('nl-NL'), W - 20, 20, { size: 20, weight: 900, align: 'right' });
-  let clock = r.mode === 'endless' ? `BEST WAVE ${Save.data.endlessBest}` : CHAPTERS[r.chapter].clock;
+  let clock = r.mode === 'endless' ? `RECORD: GOLF ${Save.data.endlessBest}` : CHAPTERS[r.chapter].clock;
   if (r.mode === 'story' && r.chapter === CHAPTERS.length - 1) {
     const secs = Math.min(59, 30 + Math.floor(r.time / 6));
     clock = secs >= 59 && Math.floor(G.t * 3) % 2 ? '23:59:--' : `23:59:${String(secs).padStart(2, '0')}`;
@@ -638,11 +641,11 @@ function drawPrologue() {
   const c = G.cutscene, t = c.t;
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
   if (t < 2.8) {
-    const s = '23:58 — the night before report cards.';
+    const s = '23:58 — de avond voor de rapporten.';
     const n = Math.floor(clamp((t - 0.3) * 24, 0, s.length));
     if (n > (c.lastN || 0)) { c.lastN = n; Snd.sfx.type(1.3); }
     txt(s.slice(0, n) + (Math.floor(t * 3) % 2 ? '_' : ''), W / 2, H / 2, { size: 22, font: MONO, align: 'center', color: '#d6e4ff', weight: 600 });
-    if (t > 1.6) txt('"Just one quick look at my grades..."', W / 2, H / 2 + 40, { size: 16, italic: true, align: 'center', color: '#6f84a8', weight: 600 });
+    if (t > 1.6) txt('"Nog één keer snel naar mijn cijfers kijken..."', W / 2, H / 2 + 40, { size: 16, italic: true, align: 'center', color: '#6f84a8', weight: 600 });
     return;
   }
   if (t >= 7.6) {
@@ -706,7 +709,7 @@ function drawPrologue() {
     ctx.fillStyle = '#1a0006'; rr(-230, -50, 460, 100, 10); ctx.fill();
     ctx.strokeStyle = '#ff3b5c'; ctx.lineWidth = 3; rr(-230, -50, 460, 100, 10); ctx.stroke();
     glitchText('ERROR 404: CIJFER NIET GEVONDEN', 0, -12, 20, '#ff3b5c', 1.5);
-    txt('something is eating the database', 0, 20, { size: 13, font: MONO, align: 'center', color: '#ff8a9c' });
+    txt('er eet iets aan de database', 0, 20, { size: 13, font: MONO, align: 'center', color: '#ff8a9c' });
     ctx.restore();
   }
   if (t > 6.9) {
@@ -731,7 +734,7 @@ function drawPrologue() {
     if (t > 4.9 && t < 5.3) { ctx.strokeStyle = 'rgba(30,111,217,0.6)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, (t - 4.9) * 80, 0, TAU); ctx.stroke(); }
   }
   ctx.restore();
-  if (t > 0.4) txt('click / enter to skip', W - 16, H - 14, { size: 11, align: 'right', color: 'rgba(255,255,255,0.3)' });
+  if (t > 0.4) txt('klik / enter om over te slaan', W - 16, H - 14, { size: 11, align: 'right', color: 'rgba(255,255,255,0.3)' });
 }
 
 // ───────────────────────────── scenes: update ─────────────────────────────
@@ -746,13 +749,13 @@ function update(rdt) {
 }
 
 function titleItems() {
-  const d = Save.data, items = [{ id: 'new', label: 'NEW STORY' }];
-  if (d.story && d.story.chapter > 0 && CHAPTERS[d.story.chapter]) items.push({ id: 'cont', label: `CONTINUE — CH.${d.story.chapter + 1}: ${CHAPTERS[d.story.chapter].title}` });
-  items.push(d.beaten ? { id: 'endless', label: `TOETSWEEK (ENDLESS) — BEST: WAVE ${d.endlessBest}` } : { id: 'endless', label: 'TOETSWEEK — 🔒 finish the story first', locked: true });
-  items.push({ id: 'name', label: `NAME: ${d.name}${G.editName ? (Math.floor(G.t * 3) % 2 ? '_' : ' ') : ''}` });
-  items.push({ id: 'mode', label: `DIFFICULTY: ${d.chill ? 'CHILL (7 lives, slower bullets)' : 'NORMAL'}` });
-  items.push({ id: 'sound', label: `SOUND: ${Snd.muted ? 'OFF' : 'ON'}  [M]` });
-  items.push({ id: 'quit', label: 'BACK TO SOMTODAY' });
+  const d = Save.data, items = [{ id: 'new', label: 'NIEUW VERHAAL' }];
+  if (d.story && d.story.chapter > 0 && CHAPTERS[d.story.chapter]) items.push({ id: 'cont', label: `VERDERGAAN — H${d.story.chapter + 1}: ${CHAPTERS[d.story.chapter].title}` });
+  items.push(d.beaten ? { id: 'endless', label: `TOETSWEEK (EINDELOOS) — RECORD: GOLF ${d.endlessBest}` } : { id: 'endless', label: 'TOETSWEEK — 🔒 speel eerst het verhaal uit', locked: true });
+  items.push({ id: 'name', label: `NAAM: ${d.name}${G.editName ? (Math.floor(G.t * 3) % 2 ? '_' : ' ') : ''}` });
+  items.push({ id: 'mode', label: `MOEILIJKHEID: ${d.chill ? 'CHILL (7 levens, tragere kogels)' : 'NORMAAL'}` });
+  items.push({ id: 'sound', label: `GELUID: ${Snd.muted ? 'UIT' : 'AAN'}  [M]` });
+  items.push({ id: 'quit', label: 'TERUG NAAR SOMTODAY' });
   return items;
 }
 
@@ -765,7 +768,7 @@ function updateTitle(rdt) {
     for (const ch of input.typed) if (Save.data.name.length < 14 && /^[\p{L}\p{N} _\-.]$/u.test(ch)) Save.data.name = (G.nameFresh ? '' : Save.data.name) + ch, G.nameFresh = false;
     if (keyPressed('Backspace')) { Save.data.name = G.nameFresh ? '' : Save.data.name.slice(0, -1); G.nameFresh = false; }
     if (keyPressed('Enter', 'NumpadEnter', 'Escape') || input.click) {
-      if (!Save.data.name.trim()) Save.data.name = 'Student';
+      if (!Save.data.name.trim()) Save.data.name = 'Leerling';
       Save.data.name = Save.data.name.trim();
       G.editName = false; Save.write(); Snd.sfx.confirm(); consumeInput();
     }
@@ -856,7 +859,7 @@ function updateGameOver(rdt) {
   }
 }
 function goItems() {
-  return G.run.mode === 'endless' ? [{ id: 'retry', label: 'TRY AGAIN' }, { id: 'title', label: 'BACK TO TITLE' }] : [{ id: 'retry', label: 'HERKANSING (retake chapter)' }, { id: 'title', label: 'BACK TO TITLE' }];
+  return G.run.mode === 'endless' ? [{ id: 'retry', label: 'OPNIEUW PROBEREN' }, { id: 'title', label: 'NAAR HET TITELSCHERM' }] : [{ id: 'retry', label: 'HERKANSING (hoofdstuk opnieuw)' }, { id: 'title', label: 'NAAR HET TITELSCHERM' }];
 }
 
 function startEnding() {
@@ -871,11 +874,11 @@ function startEnding() {
 }
 
 const ENDING_TALK = [
-  ['ping', 'A 5,5! IT\'S A PASS!', 'confetti'],
-  ['you', '...I fought a living 1,0 for a 5,5.'],
-  ['ping', 'And you\'d do it again.'],
-  ['you', '...Yeah. Yeah, I would.'],
-  ['ping', 'Same time next report? *ding*'],
+  ['ping', 'EEN 5,5! VOLDOENDE!', 'confetti'],
+  ['you', '...Ik heb tegen een levende 1,0 gevochten voor een 5,5.'],
+  ['ping', 'En je zou het zo weer doen.'],
+  ['you', '...Ja. Ja, eigenlijk wel.'],
+  ['ping', 'Zelfde tijd bij het volgende rapport? *ding*'],
 ];
 
 function updateEnding(rdt) {
@@ -937,9 +940,9 @@ function drawTitle() {
   drawFXParts();
   ctx.restore();
   drawMenu(titleItems(), G.menuSel, 222, 38);
-  if (G.editName) txt('type your name · enter to save', W / 2, 222 + 3 * 38 + 22, { size: 11, align: 'center', color: '#ffd84a' });
-  txt('WASD move · MOUSE aim · HOLD CLICK write · SPACE dash · E inleveren · ESC pause · M mute', W / 2, H - 38, { size: 12, weight: 700, align: 'center', color: '#7d93ba' });
-  txt('A fan-made story mod for Somtoday · not affiliated with Somtoday', W / 2, H - 18, { size: 10, align: 'center', color: 'rgba(255,255,255,0.3)' });
+  if (G.editName) txt('typ je naam · enter om op te slaan', W / 2, 222 + 3 * 38 + 22, { size: 11, align: 'center', color: '#ffd84a' });
+  txt('WASD lopen · MUIS richten · KLIK VASTHOUDEN schrijven · SPATIE dashen · E inleveren · ESC pauze · M geluid', W / 2, H - 38, { size: 12, weight: 700, align: 'center', color: '#7d93ba' });
+  txt('Een fan-made verhaalmod voor Somtoday · niet officieel verbonden aan Somtoday', W / 2, H - 18, { size: 10, align: 'center', color: 'rgba(255,255,255,0.3)' });
   drawOverlay();
 }
 
@@ -1014,9 +1017,9 @@ function drawGameOver() {
   ctx.save(); ctx.translate(W / 2, 150); ctx.scale(k, k);
   glitchText('BLIJVEN ZITTEN', 0, 0, 64, '#ff3b5c', 1 + (Math.random() < 0.08 ? 4 : 0));
   ctx.restore();
-  txt(G.run.mode === 'endless' ? `You survived until wave ${G.run.endlessN}.` : 'You got held back. The Onvoldoende grows stronger...', W / 2, 205, { size: 17, italic: true, weight: 600, align: 'center', color: '#ffb3c0' });
-  if (g.newBest) txt('NEW PERSONAL BEST!', W / 2, 235, { size: 18, weight: 900, align: 'center', color: '#ffd84a' });
-  txt(`Score ${G.score.toLocaleString('nl-NL')} · Kills ${G.stats.kills} · Best combo ${G.bestCombo}`, W / 2, 262, { size: 14, weight: 700, align: 'center', color: '#9fb3d1' });
+  txt(G.run.mode === 'endless' ? `Je hebt het volgehouden tot golf ${G.run.endlessN}.` : 'Je bent blijven zitten. De Onvoldoende wordt sterker...', W / 2, 205, { size: 17, italic: true, weight: 600, align: 'center', color: '#ffb3c0' });
+  if (g.newBest) txt('NIEUW PERSOONLIJK RECORD!', W / 2, 235, { size: 18, weight: 900, align: 'center', color: '#ffd84a' });
+  txt(`Score ${G.score.toLocaleString('nl-NL')} · Verslagen ${G.stats.kills} · Beste combo ${G.bestCombo}`, W / 2, 262, { size: 14, weight: 700, align: 'center', color: '#9fb3d1' });
   if (g.t > 1.2) drawMenu(goItems(), g.sel, 330);
   ctx.restore();
   drawOverlay();
@@ -1055,13 +1058,13 @@ function drawEnding() {
       const ry = y + 92 + CHAPTERS.length * 52 + 10;
       ctx.fillStyle = '#1d2b4a'; ctx.fillRect(x + 20, ry, w - 40, 2);
       txt('GEMIDDELDE', x + 40, ry + 30, { size: 18, weight: 900, color: '#1d2b4a' });
-      txt(`Score ${G.score.toLocaleString('nl-NL')} · ${G.stats.kills} kills · ${fmtTime(G.stats.time)}`, x + 40, ry + 52, { size: 12, weight: 600, color: '#8392ad' });
+      txt(`Score ${G.score.toLocaleString('nl-NL')} · ${G.stats.kills} verslagen · ${fmtTime(G.stats.time)}`, x + 40, ry + 52, { size: 12, weight: 600, color: '#8392ad' });
       ctx.fillStyle = gradeColor(e.avg); rr(x + w - 124, ry + 12, 88, 40, 8); ctx.fill();
       txt(fmtGrade(e.avg), x + w - 80, ry + 33, { size: 22, weight: 900, align: 'center' });
-      if (e.t > avgAt + 0.8 && Math.floor(G.t * 2) % 2) txt('click / enter', x + w / 2, y + h - 14, { size: 12, align: 'center', color: '#8392ad' });
+      if (e.t > avgAt + 0.8 && Math.floor(G.t * 2) % 2) txt('klik / enter', x + w / 2, y + h - 14, { size: 12, align: 'center', color: '#8392ad' });
     }
   } else if (e.phase === 'reveal') {
-    txt('...and the grade you came to check:', W / 2, 120, { size: 20, italic: true, weight: 600, align: 'center', color: '#d6e4ff' });
+    txt('...en het cijfer waar het allemaal om begon:', W / 2, 120, { size: 20, italic: true, weight: 600, align: 'center', color: '#d6e4ff' });
     txt('WISKUNDE · Proefwerk H4', W / 2, 165, { size: 18, weight: 900, align: 'center', color: '#ffd84a' });
     const g = e.shown ?? 1;
     const landed = !!e.ev.land;

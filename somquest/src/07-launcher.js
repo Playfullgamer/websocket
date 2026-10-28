@@ -141,10 +141,10 @@ function closeGame() {
   const btn = document.getElementById('somquest-launch');
   if (btn) btn.style.display = '';
   toast(pick([
-    'PING: Come back soon — the grades won\'t defend themselves! 🔔',
-    'PING: Don\'t forget your actual homework. 🔔',
+    'PING: Kom snel terug — de cijfers verdedigen zichzelf niet! 🔔',
+    'PING: Vergeet je echte huiswerk niet, hè. 🔔',
     'MENTOR.EXE: Goed bezig. Let op je inzet. 🖥️',
-    'PING: The Onvoldoende never sleeps. Neither do I. 🔔',
+    'PING: De Onvoldoende slaapt nooit. Ik ook niet. 🔔',
   ]));
 }
 
@@ -163,7 +163,7 @@ function installButton() {
   b.id = 'somquest-launch';
   b.type = 'button';
   b.textContent = '⚔️ SomQuest';
-  b.title = 'Play SomQuest — Het Laatste Rapport (Alt+Q)';
+  b.title = 'Speel SomQuest — Het Laatste Rapport (Alt+Q)';
   b.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:2147483646;padding:11px 18px;border:0;border-radius:999px;font:800 14px/1 system-ui,"Segoe UI",Roboto,sans-serif;color:#fff;background:linear-gradient(135deg,#1f7bff,#7a3cff);box-shadow:0 6px 22px rgba(31,123,255,.45),inset 0 1px 0 rgba(255,255,255,.35);cursor:pointer;letter-spacing:.3px;transition:transform .15s ease,box-shadow .15s ease;';
   b.addEventListener('mouseenter', () => { b.style.transform = 'translateY(-2px) scale(1.05)'; b.style.boxShadow = '0 10px 30px rgba(122,60,255,.6),inset 0 1px 0 rgba(255,255,255,.35)'; });
   b.addEventListener('mouseleave', () => { b.style.transform = ''; b.style.boxShadow = '0 6px 22px rgba(31,123,255,.45),inset 0 1px 0 rgba(255,255,255,.35)'; });

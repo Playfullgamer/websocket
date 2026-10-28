@@ -13,7 +13,7 @@ const header = `// ==UserScript==
 // @name         SomQuest — Het Laatste Rapport
 // @namespace    https://github.com/Playfullgamer/websocket
 // @version      ${pkg.version}
-// @description  A full story game inside Somtoday: 5 chapters, bosses, lore, sound and effects. Click the SomQuest button or press Alt+Q.
+// @description  Een complete verhaalgame in Somtoday: 5 hoofdstukken, bazen, lore, geluid en effecten. Klik op de SomQuest-knop of druk op Alt+Q.
 // @match        https://*.somtoday.nl/*
 // @grant        none
 // @run-at       document-idle
@@ -30,7 +30,7 @@ const manifest = {
   manifest_version: 3,
   name: 'SomQuest — Het Laatste Rapport',
   version: pkg.version,
-  description: 'A full story game mod for Somtoday: 5 chapters, bosses, lore, sound and effects.',
+  description: 'Een complete verhaalgame-mod voor Somtoday: 5 hoofdstukken, bazen, lore, geluid en effecten.',
   icons: { 16: 'icon16.png', 48: 'icon48.png', 128: 'icon128.png' },
   content_scripts: [{ matches: ['https://*.somtoday.nl/*'], js: ['somquest.js'], run_at: 'document_idle' }],
 };

@@ -1,76 +1,77 @@
 # ⚔️ SomQuest — Het Laatste Rapport
 
-A full story game that lives **inside Somtoday**. Install it and a **⚔️ SomQuest** button appears in the corner of every Somtoday page. Click it, the page glitches out, and you get pulled into the database.
+Een complete verhaalgame die **in Somtoday** draait. Na het installeren staat er op elke Somtoday-pagina rechtsonder een **⚔️ SomQuest**-knop. Klik erop, de pagina glitcht, en je wordt de database in gezogen.
 
-> It's 23:58, the night before report cards. You open Somtoday for one last look at your grades... and something is **eating the database**. With PING the notification bell at your side, you fight through the Rooster, the Huiswerk pile, the Cijfers tab and the pitch-black Afwezigheid records to stop **De Onvoldoende** before every grade in the country turns into a 1,0.
+> Het is 23:58, de avond voor de rapporten. Je opent Somtoday nog één keer om naar je cijfers te kijken... en er **eet iets aan de database**. Samen met PING, het meldingsbelletje, vecht je je door het Rooster, de Huiswerk-stapel, het Cijfers-tabblad en de pikdonkere Afwezigheid om **De Onvoldoende** te stoppen, voordat elk cijfer in het land een 1,0 wordt.
 
-## What's in it
+## Installeren in Chrome / Edge (uitgepakte extensie)
 
-- **5 story chapters** with a cutscene intro, typewriter dialogue, character portraits, system-log lore drops and an ending, plus a report card and credits.
-- **6 bosses**, each with its own attack patterns and a phase 2: Het 8ste Uur, Het Werkstuk, Het Gemiddelde, De Verzuimcoördinator, MENTOR.EXE and De Onvoldoende.
-- **9 enemy types** built from school stuff: free-period ghosts, late-mark clocks that charge, tests that snipe, homework stacks that split, deadlines that speed up, failing grades, skipping ghosts and notification spam.
-- **13 upgrades** ("school supplies"), with 3 to pick from between fights: calculator spread shot, highlighter piercing, stapler fire rate, eraser dash, orbiting compass and more.
-- **Bullet-hell arena gameplay** with dashing through bullets, grazing, combos (VOLDOENDE → CUM LAUDE) and the **INLEVEREN** screen-clear.
-- **Effects:** particles, screen shake, hit-stop, slow-mo boss deaths, glitch and chromatic effects, lasers, a darkness/flashlight level and CRT scanlines.
-- **Sound:** all synthesized live with WebAudio (no audio files). There are SFX for everything and a separate chiptune track for each chapter, the bosses and the ending.
-- **Grades:** every chapter gives you a grade (1,0–10,0) based on hits taken, time and retakes, and they all end up on your final rapport.
-- **Herkansing:** if you die you can retake the chapter.
-- **Toetsweek:** an endless mode you unlock by finishing the story.
-- **Chill difficulty** (7 lives, slower bullets), name entry, and progress is saved.
+1. Download deze repo: **Code → Download ZIP**, en pak het zip-bestand uit.
+2. Ga naar `chrome://extensions` (of `edge://extensions` in Edge).
+3. Zet rechtsboven **Ontwikkelaarsmodus** (Developer mode) aan.
+4. Klik op **Uitgepakte extensie laden** (Load unpacked) en kies de map **`somquest/extension`**. Dat is de map waar `manifest.json` in staat.
+5. Open of ververs Somtoday. Rechtsonder staat nu de knop **⚔️ SomQuest**. Je kunt de game ook openen met `Alt+Q`.
 
-## Controls
+Na een update van de code: klik bij de extensie in `chrome://extensions` op het ↻-icoontje en ververs Somtoday.
 
-| Action | Key |
+**Zonder Somtoday spelen?** Open [`demo.html`](demo.html) in je browser. Dat is een nagemaakte pagina met dezelfde knop.
+
+<details>
+<summary>Liever Tampermonkey?</summary>
+
+Installeer [`dist/somquest.user.js`](dist/somquest.user.js): open het bestand op GitHub en druk op **Raw**.
+</details>
+
+## Wat zit erin
+
+- **5 hoofdstukken** met een geanimeerde intro, typemachine-dialogen, portretten van de personages, geheime systeemlogs, een einde, een rapport en aftiteling.
+- **6 bazen**, elk met eigen aanvalspatronen en een fase 2: Het 8ste Uur, Het Werkstuk, Het Gemiddelde, De Verzuimcoördinator, MENTOR.EXE en De Onvoldoende.
+- **9 soorten vijanden:** tussenuren, te-laatmeldingen die op je af stormen, toetsen die schieten, huiswerkstapels die uit elkaar vallen, deadlines die steeds sneller gaan, onvoldoendes, spijbelspoken en meldingen.
+- **13 upgrades** (schoolspullen) om tussen de gevechten uit te kiezen, zoals de grafische rekenmachine, markeerstift, nietmachine, gum en passer.
+- **Bullet-hell-gameplay** met dashen door kogels, combo's (van VOLDOENDE tot CUM LAUDE) en **INLEVEREN**, dat het hele scherm leegveegt.
+- **Effecten en geluid:** deeltjes, screenshake, slow-motion, glitch-effecten, lasers en een donker level. Alle geluiden en chiptune-muziek worden live gegenereerd, er zitten dus geen audiobestanden in.
+- **Cijfers:** elk hoofdstuk levert een cijfer op (1,0 tot 10,0), en die komen samen op je eindrapport.
+- **Herkansing:** ga je dood, dan doe je het hoofdstuk opnieuw.
+- **Toetsweek:** een eindeloze modus die je vrijspeelt door het verhaal uit te spelen.
+- **Opties:** een Chill-moeilijkheid (7 levens, tragere kogels), je eigen naam, en je voortgang wordt opgeslagen.
+
+## Besturing
+
+| Actie | Toets |
 |---|---|
-| Move | `WASD` / arrow keys |
-| Aim | mouse |
-| Write (shoot) | hold left click |
-| Dash (invincible) | `Space` / `Shift` |
-| INLEVEREN (screen clear) | `E` / `Q` / right click |
-| Pause | `Esc` / `P` |
-| Mute | `M` |
-| Skip dialogue | `Tab` |
-| Open the game from Somtoday | click the button, `Alt+Q`, or the Konami code |
+| Lopen | `WASD` / pijltjestoetsen |
+| Richten | muis |
+| Schrijven (schieten) | linkermuisknop ingedrukt houden |
+| Dashen (onkwetsbaar) | `Spatie` / `Shift` |
+| INLEVEREN (scherm leegvegen) | `E` / `Q` / rechtermuisknop |
+| Pauze | `Esc` / `P` |
+| Geluid aan/uit | `M` |
+| Dialoog overslaan | `Tab` |
+| Game openen in Somtoday | de knop, `Alt+Q` of de Konami-code |
 
-## Install
+## Ontwikkelen
 
-### Option A: Tampermonkey / Violentmonkey (easiest)
-1. Install the [Tampermonkey](https://www.tampermonkey.net/) browser extension.
-2. Open [`dist/somquest.user.js`](dist/somquest.user.js) on GitHub, press **Raw**, and Tampermonkey will offer to install it.
-3. Go to Somtoday and click **⚔️ SomQuest** in the bottom-right corner.
-
-### Option B: Chrome / Edge extension
-1. Download this repo (Code → Download ZIP) and unzip it.
-2. Go to `chrome://extensions` (or `edge://extensions`) and turn on **Developer mode**.
-3. Click **Load unpacked** and select the `somquest/extension` folder.
-4. Open Somtoday and click the button.
-
-### Option C: play without Somtoday
-Open [`demo.html`](demo.html) in your browser. It's a stand-in page with the same launch button.
-
-## Development
-
-The game is plain JavaScript with no dependencies. The source lives in `src/` and gets bundled into one file:
+De game is gewoon JavaScript, zonder dependencies. De broncode staat in `src/` en wordt gebundeld met:
 
 ```bash
 node build.js
 ```
 
-That writes `dist/somquest.js` (used by `demo.html`), `dist/somquest.user.js` (the userscript) and `extension/somquest.js`.
+Dat schrijft `extension/somquest.js` en `extension/manifest.json`, plus `dist/somquest.js` (voor `demo.html`) en `dist/somquest.user.js`.
 
-| File | What's in it |
+| Bestand | Inhoud |
 |---|---|
-| `src/00-util.js` | math helpers, save data, canvas text helpers |
-| `src/01-audio.js` | synthesized SFX and the chiptune sequencer |
-| `src/02-fx.js` | particles, shake, flash, hit-stop, glitch post-processing |
-| `src/03-render.js` | themed backgrounds and the character portraits |
-| `src/04-entities.js` | player, upgrades, bullets, lasers, enemies and bosses |
-| `src/05-story.js` | all chapters, dialogue and credits |
-| `src/06-game.js` | scenes, menus, HUD, cutscenes and the chapter flow |
-| `src/07-launcher.js` | the overlay, input, game loop and Somtoday button |
+| `src/00-util.js` | rekenhulpjes, opslaan, teksthulpjes |
+| `src/01-audio.js` | gegenereerde geluidseffecten en de chiptune-sequencer |
+| `src/02-fx.js` | deeltjes, shake, flitsen, hit-stop, glitch |
+| `src/03-render.js` | achtergronden per thema en de portretten |
+| `src/04-entities.js` | speler, upgrades, kogels, lasers, vijanden en bazen |
+| `src/05-story.js` | alle hoofdstukken, dialogen en de aftiteling |
+| `src/06-game.js` | scènes, menu's, HUD, cutscenes en het verloop van de hoofdstukken |
+| `src/07-launcher.js` | overlay, invoer, game-loop en de Somtoday-knop |
 
-The game runs in its own full-screen overlay. It never reads or changes anything on your Somtoday page, and progress is saved under one `localStorage` key (`somquest.save.v1`).
+De game draait in een eigen schermvullende laag. Hij leest of verandert niets op je Somtoday-pagina, en je voortgang staat in één `localStorage`-sleutel (`somquest.save.v1`).
 
 ---
 
-*Fan-made for fun. Not affiliated with Somtoday or Topicus.*
+*Fan-made, gewoon voor de lol. Niet officieel verbonden aan Somtoday of Topicus.*

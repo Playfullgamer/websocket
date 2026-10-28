@@ -52,7 +52,7 @@ const Save = {
   load() {
     try { this.data = JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch (e) { this.data = {}; }
     const d = this.data;
-    if (typeof d.name !== 'string' || !d.name) d.name = 'Student';
+    if (typeof d.name !== 'string' || !d.name) d.name = 'Leerling';
     if (typeof d.muted !== 'boolean') d.muted = false;
     if (typeof d.chill !== 'boolean') d.chill = false;
     if (!d.grades) d.grades = {};

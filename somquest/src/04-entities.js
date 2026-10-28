@@ -11,19 +11,19 @@ function newPlayer() {
 }
 
 const UPGRADES = [
-  { id: 'calc', icon: '🧮', name: 'Graphing Calculator', desc: '+1 shot per click. Spread the knowledge.', max: 4, apply: p => { p.s.spread++; } },
-  { id: 'highlighter', icon: '🖍️', name: 'Highlighter', desc: 'Shots pierce through +1 enemy.', max: 3, apply: p => { p.s.pierce++; } },
-  { id: 'coffee', icon: '☕', name: 'Cafeteria Coffee', desc: '+15% move speed, +10% fire rate. Tastes like sadness.', max: 3, apply: p => { p.s.speed *= 1.15; p.s.fireRate *= 1.1; } },
-  { id: 'stapler', icon: '📎', name: 'Stapler', desc: '+25% fire rate. Clack clack clack.', max: 4, apply: p => { p.s.fireRate *= 1.25; } },
-  { id: 'cheat', icon: '📝', name: 'Cheat Sheet', desc: '+15% chance for a CRIT (x2.5 damage).', max: 3, apply: p => { p.s.crit += 0.15; } },
-  { id: 'eraser', icon: '🧽', name: 'Eraser', desc: 'Dashing erases enemy bullets. -20% dash cooldown.', max: 2, apply: p => { p.s.eraser = true; p.s.dashCd *= 0.8; } },
-  { id: 'tutor', icon: '📚', name: 'Tutoring', desc: '+1 max life and a full heal.', max: 3, apply: p => { p.maxhp++; p.hp = p.maxhp; } },
-  { id: 'explain', icon: '✏️', name: 'Extra Explanation', desc: '+35% damage and chunkier shots.', max: 3, apply: p => { p.s.dmg *= 1.35; p.s.bsize += 1.2; } },
-  { id: 'planner', icon: '📅', name: 'Planner', desc: 'INLEVEREN meter charges 40% faster.', max: 2, apply: p => { p.s.specialGain *= 1.4; } },
-  { id: 'bell', icon: '🔔', name: 'School Bell', desc: 'Getting hit rings a shockwave that wipes nearby bullets.', max: 1, apply: p => { p.s.bell = true; } },
-  { id: 'compass', icon: '📐', name: 'Compass', desc: 'A sharp compass orbits you. Stacks.', max: 3, apply: p => { p.s.compass++; } },
-  { id: 'laptop', icon: '💻', name: 'School Laptop', desc: 'Your shots gently home in on enemies.', max: 2, apply: p => { p.s.homing++; } },
-  { id: 'magnet', icon: '🧲', name: 'Fridge Magnet', desc: 'Points fly to you from anywhere. +20% score.', max: 1, apply: p => { p.s.magnet = true; p.s.scoreMul *= 1.2; } },
+  { id: 'calc', icon: '🧮', name: 'Grafische Rekenmachine', desc: '+1 schot per klik. Deel je kennis.', max: 4, apply: p => { p.s.spread++; } },
+  { id: 'highlighter', icon: '🖍️', name: 'Markeerstift', desc: 'Je schoten gaan door +1 vijand heen.', max: 3, apply: p => { p.s.pierce++; } },
+  { id: 'coffee', icon: '☕', name: 'Kantinekoffie', desc: '+15% loopsnelheid, +10% vuursnelheid. Smaakt naar verdriet.', max: 3, apply: p => { p.s.speed *= 1.15; p.s.fireRate *= 1.1; } },
+  { id: 'stapler', icon: '📎', name: 'Nietmachine', desc: '+25% vuursnelheid. Klak klak klak.', max: 4, apply: p => { p.s.fireRate *= 1.25; } },
+  { id: 'cheat', icon: '📝', name: 'Spiekbriefje', desc: '+15% kans op een KRIT (x2,5 schade).', max: 3, apply: p => { p.s.crit += 0.15; } },
+  { id: 'eraser', icon: '🧽', name: 'Gum', desc: 'Dashen gumt vijandelijke kogels uit. Dash laadt 20% sneller op.', max: 2, apply: p => { p.s.eraser = true; p.s.dashCd *= 0.8; } },
+  { id: 'tutor', icon: '📚', name: 'Bijles', desc: '+1 extra leven en je wordt volledig genezen.', max: 3, apply: p => { p.maxhp++; p.hp = p.maxhp; } },
+  { id: 'explain', icon: '✏️', name: 'Extra Uitleg', desc: '+35% schade en dikkere schoten.', max: 3, apply: p => { p.s.dmg *= 1.35; p.s.bsize += 1.2; } },
+  { id: 'planner', icon: '📅', name: 'Agenda', desc: 'Je INLEVEREN-meter laadt 40% sneller op.', max: 2, apply: p => { p.s.specialGain *= 1.4; } },
+  { id: 'bell', icon: '🔔', name: 'Schoolbel', desc: 'Word je geraakt, dan gaat de bel: een schokgolf wist kogels om je heen.', max: 1, apply: p => { p.s.bell = true; } },
+  { id: 'compass', icon: '📐', name: 'Passer', desc: 'Een scherpe passer draait om je heen. Stapelbaar.', max: 3, apply: p => { p.s.compass++; } },
+  { id: 'laptop', icon: '💻', name: 'Schoollaptop', desc: 'Je schoten zoeken zelf een beetje vijanden op.', max: 2, apply: p => { p.s.homing++; } },
+  { id: 'magnet', icon: '🧲', name: 'Koelkastmagneet', desc: 'Punten vliegen van overal naar je toe. +20% score.', max: 1, apply: p => { p.s.magnet = true; p.s.scoreMul *= 1.2; } },
 ];
 const UPG = Object.fromEntries(UPGRADES.map(u => [u.id, u]));
 
@@ -75,7 +75,7 @@ function updatePlayer(p, dt) {
 
   if (keyPressed('KeyE', 'KeyQ') || input.rclick) {
     if (p.special >= 1) doSpecial(p);
-    else if (p.denyCd <= 0) { Snd.sfx.deny(); p.denyCd = 0.4; floatText(p.x, p.y - 22, 'Not ready!', '#9fb3d1', 12, { dur: 0.6 }); }
+    else if (p.denyCd <= 0) { Snd.sfx.deny(); p.denyCd = 0.4; floatText(p.x, p.y - 22, 'Nog niet vol!', '#9fb3d1', 12, { dur: 0.6 }); }
   }
 
   if (p.s.compass) {
@@ -168,11 +168,11 @@ function doSpecial(p) {
 function hurtPlayer(p) {
   if (p.inv > 0 || p.dashT > 0 || p.dead || G.debugGod) return false;
   p.hp--; p.inv = 1.25; G.run.hits++;
-  if (G.combo >= 10) floatText(W / 2, 110, 'COMBO LOST', '#ff4d6d', 18);
+  if (G.combo >= 10) floatText(W / 2, 110, 'COMBO KWIJT', '#ff4d6d', 18);
   G.combo = 0;
   Snd.sfx.hurt(); addShake(12); flash('#ff2040', 0.45); hitstop(0.1); glitch(0.18);
   burst(p.x, p.y, ['#ff4d6d', '#ffffff'], 18, 260);
-  floatText(p.x, p.y - 26, pick(['OUCH!', 'AU!', '-1', 'ONVOLDOENDE!', 'OOF']), '#ff4d6d', 18);
+  floatText(p.x, p.y - 26, pick(['AU!', 'AUW!', '-1', 'ONVOLDOENDE!', 'OEF']), '#ff4d6d', 18);
   if (p.s.bell) {
     ringFx(p.x, p.y, '#ffd84a', 180, 0.5, 8); Snd.sfx.ping();
     for (let i = G.eb.length - 1; i >= 0; i--) if (dist(G.eb[i].x, G.eb[i].y, p.x, p.y) < 180) G.eb.splice(i, 1);
@@ -424,7 +424,7 @@ function eyes(e, sep, y, size, col = '#13233d') {
   ctx.beginPath(); ctx.arc(-sep + ox, y + oy, size * 0.55, 0, TAU); ctx.arc(sep + ox, y + oy, size * 0.55, 0, TAU); ctx.fill();
 }
 
-const KILL_WORDS = ['Goed!', 'Netjes!', 'Top!', 'Voldoende!', 'Prima!', 'Afgevinkt!', 'Nice!', 'Gelukt!'];
+const KILL_WORDS = ['Goed!', 'Netjes!', 'Top!', 'Voldoende!', 'Prima!', 'Afgevinkt!', 'Lekker!', 'Gelukt!'];
 const COMBO_TIERS = [[10, 'VOLDOENDE'], [20, 'RUIM VOLDOENDE'], [30, 'GOED'], [50, 'ZEER GOED'], [75, 'UITSTEKEND'], [100, 'CUM LAUDE']];
 
 const ENEMY = {
@@ -719,7 +719,7 @@ function bossSpawnMinion(e, type, n) {
 
 const BOSSES = {
   achtsteuur: {
-    name: 'HET 8STE UUR', quote: '"Nobody goes home early."', hp: 150, r: 50, color: '#7cc4ff', music: 'boss', sprite: 'achtsteuur',
+    name: 'HET 8STE UUR', quote: '"Niemand gaat eerder naar huis."', hp: 150, r: 50, color: '#7cc4ff', music: 'boss', sprite: 'achtsteuur',
     patterns: [
       { id: 'rings', dur: 2.8, tick(e, dt, t, s) { every(s, 'a', e.phase > 1 ? 0.42 : 0.6, dt, () => { s.n = (s.n || 0) + 1; eRing(e.x, e.y + 22, e.phase > 1 ? 18 : 14, 150, s.n * 0.2, { color: '#7cc4ff', r: 5.5 }); Snd.sfx.eshoot(); }); } },
       { id: 'summon', dur: 1.8, start(e) { bossSpawnMinion(e, e.phase > 1 ? 'telaat' : 'tussenuur', 3); } },
@@ -745,7 +745,7 @@ const BOSSES = {
     ],
   },
   werkstuk: {
-    name: 'HET WERKSTUK', quote: '"2000 words. Minimum. Sources required."', hp: 190, r: 52, color: '#2ee6b5', music: 'boss', sprite: 'werkstuk',
+    name: 'HET WERKSTUK', quote: '"2000 woorden. Minimaal. Met bronvermelding."', hp: 190, r: 52, color: '#2ee6b5', music: 'boss', sprite: 'werkstuk',
     patterns: [
       {
         id: 'words', dur: 3.4,
@@ -770,10 +770,10 @@ const BOSSES = {
         },
       },
     ],
-    onPhase(e) { floatText(e.x, e.y - 80, 'DEADLINE: NOW', '#ff5470', 22, { dur: 1.6 }); },
+    onPhase(e) { floatText(e.x, e.y - 80, 'DEADLINE: NU!', '#ff5470', 22, { dur: 1.6 }); },
   },
   gemiddelde: {
-    name: 'HET GEMIDDELDE', quote: '"I am what you are. On average."', hp: 220, r: 52, color: '#c48bff', music: 'boss', sprite: 'gemiddelde',
+    name: 'HET GEMIDDELDE', quote: '"Ik ben wat jij bent. Gemiddeld."', hp: 220, r: 52, color: '#c48bff', music: 'boss', sprite: 'gemiddelde',
     patterns: [
       { id: 'spiral', dur: 3.4, tick(e, dt, t, s) { every(s, 'a', 0.075, dt, () => { s.ang = (s.ang || 0) + 0.31; const arms = e.phase > 1 ? 4 : 2; for (let k = 0; k < arms; k++) eShot(e.x, e.y, s.ang + (k * TAU) / arms, 150, { color: '#c48bff', r: 5 }); }); } },
       { id: 'rain', dur: 3.0, tick(e, dt, t, s) { every(s, 'r', e.phase > 1 ? 0.12 : 0.17, dt, () => eShot(rand(AX + 15, AR - 15), AY + 4, Math.PI / 2 + rand(-0.12, 0.12), rand(140, 210), { kind: 'tile', text: fmtGrade(rand(1, 5.4)), color: '#e5484d', r: 8 })); } },
@@ -791,10 +791,10 @@ const BOSSES = {
       },
       { id: 'rings', dur: 2.6, tick(e, dt, t, s) { every(s, 'q', 0.5, dt, () => { s.n = (s.n || 0) + 1; eRing(e.x, e.y, 16, s.n % 2 ? 120 : 190, s.n * 0.2, { color: s.n % 2 ? '#c48bff' : '#ff6b70', r: 5 }); }); } },
     ],
-    onPhase(e) { floatText(e.x, e.y - 90, 'VOLDOENDE?! IMPOSSIBLE!', '#2fbf71', 22, { dur: 1.8 }); },
+    onPhase(e) { floatText(e.x, e.y - 90, 'VOLDOENDE?! ONMOGELIJK!', '#2fbf71', 22, { dur: 1.8 }); },
   },
   verzuim: {
-    name: 'DE VERZUIMCOÖRDINATOR', quote: '"Absent is absent."', hp: 240, r: 44, color: '#a58bff', music: 'boss', sprite: 'verzuim',
+    name: 'DE VERZUIMCOÖRDINATOR', quote: '"Afwezig is afwezig."', hp: 240, r: 44, color: '#a58bff', music: 'boss', sprite: 'verzuim',
     patterns: [
       {
         id: 'blink', dur: 3.2, own: true,
@@ -821,7 +821,7 @@ const BOSSES = {
     ],
   },
   mentor: {
-    name: 'MENTOR.EXE', quote: '"Automatically generated comment: DISAPPOINTING."', hp: 270, r: 54, color: '#4dffa6', music: 'final', sprite: 'mentor',
+    name: 'MENTOR.EXE', quote: '"Automatisch gegenereerde opmerking: TELEURSTELLEND."', hp: 270, r: 54, color: '#4dffa6', music: 'final', sprite: 'mentor',
     patterns: [
       { id: 'comments', dur: 3.0, tick(e, dt, t, s) { every(s, 'c', e.phase > 1 ? 0.35 : 0.5, dt, () => { eShot(e.x, e.y, aimP(e) + rand(-0.2, 0.2), 210, { kind: 'text', text: pick(MENTOR_LINES), color: e.phase > 1 ? '#ff6b70' : '#4dffa6', r: 8, size: 12 }); Snd.sfx.eshoot(); }); } },
       {
@@ -849,7 +849,7 @@ const BOSSES = {
     onPhase() { G.mentorInfected = true; glitch(0.5); },
   },
   onvoldoende: {
-    name: 'DE ONVOLDOENDE', quote: '"I am the 1,0 that never ends."', hp: 340, r: 56, color: '#ff3b5c', music: 'final', sprite: 'onvoldoende',
+    name: 'DE ONVOLDOENDE', quote: '"Ik ben de 1,0 die nooit ophoudt."', hp: 340, r: 56, color: '#ff3b5c', music: 'final', sprite: 'onvoldoende',
     patterns: [
       { id: 'hell', dur: 4.0, tick(e, dt, t, s) { every(s, 'h', 0.065, dt, () => { s.a = (s.a || 0) + 0.19 + (e.phase > 1 ? Math.sin(t * 1.5) * 0.12 : 0); const arms = e.phase > 1 ? 5 : 3; for (let k = 0; k < arms; k++) eShot(e.x, e.y, s.a + (k * TAU) / arms, 140, { color: '#ff3b5c', r: 5 }); }); } },
       { id: 'mines', dur: 2.8, tick(e, dt, t, s) { every(s, 'm', e.phase > 1 ? 0.35 : 0.5, dt, () => { const tx = rand(AX + 60, AR - 60), ty = rand(AY + 60, AB - 60); const d = dist(e.x, e.y, tx, ty); eShot(e.x, e.y, angTo(e.x, e.y, tx, ty), d * 1.6, { color: '#ff9f43', r: 7, acc: -d * 1.6, minSpd: 0, fuse: 1.0 }); }); } },
@@ -876,7 +876,7 @@ const BOSSES = {
         },
       },
     ],
-    onPhase(e) { glitch(0.8); floatText(e.x, e.y - 90, 'ERROR: GRADE OVERFLOW', '#ff3b5c', 20, { dur: 1.8 }); },
+    onPhase(e) { glitch(0.8); floatText(e.x, e.y - 90, 'FOUT: CIJFER-OVERLOOP', '#ff3b5c', 20, { dur: 1.8 }); },
   },
 };
 
@@ -925,14 +925,14 @@ function damageEnemy(e, dmg, crit, kvx = 0, kvy = 0) {
   if (e.dead || e.spawnT > 0 || e.ghost) return;
   e.hp -= dmg; e.flash = 0.07;
   if (!e.boss) { const k = 0.08 * (e.d.kb ?? 1); e.vx += kvx * k; e.vy += kvy * k; }
-  if (crit) { floatText(e.x + rand(-8, 8), e.y - e.r - 6, 'CRIT!', '#ffd84a', 13, { dur: 0.5 }); Snd.sfx.crit(); } else Snd.sfx.hit();
+  if (crit) { floatText(e.x + rand(-8, 8), e.y - e.r - 6, 'KRIT!', '#ffd84a', 13, { dur: 0.5 }); Snd.sfx.crit(); } else Snd.sfx.hit();
   if (e.boss && e.phase === 1 && e.hp <= e.maxhp * 0.5 && e.hp > 0) {
     e.phase = 2; e.pat = null; e.tele = null;
     flash('#ffffff', 0.5); addShake(14); Snd.sfx.roar(); glitch(0.25);
     for (const b of G.eb) burst(b.x, b.y, '#ffffff', 1, 60);
     G.eb.length = 0;
     ringFx(e.x, e.y, e.d.color, 300, 0.7, 10);
-    floatText(e.x, e.y - e.r - 30, 'PHASE 2', '#ffffff', 26, { dur: 1.4 });
+    floatText(e.x, e.y - e.r - 30, 'FASE 2', '#ffffff', 26, { dur: 1.4 });
     e.d.onPhase && e.d.onPhase(e);
   }
   if (e.hp <= 0) killEnemy(e);

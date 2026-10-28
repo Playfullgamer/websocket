@@ -2,7 +2,7 @@
 // @name         SomQuest — Het Laatste Rapport
 // @namespace    https://github.com/Playfullgamer/websocket
 // @version      1.0.0
-// @description  A full story game inside Somtoday: 5 chapters, bosses, lore, sound and effects. Click the SomQuest button or press Alt+Q.
+// @description  Een complete verhaalgame in Somtoday: 5 hoofdstukken, bazen, lore, geluid en effecten. Klik op de SomQuest-knop of druk op Alt+Q.
 // @match        https://*.somtoday.nl/*
 // @grant        none
 // @run-at       document-idle
@@ -66,7 +66,7 @@ const Save = {
   load() {
     try { this.data = JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch (e) { this.data = {}; }
     const d = this.data;
-    if (typeof d.name !== 'string' || !d.name) d.name = 'Student';
+    if (typeof d.name !== 'string' || !d.name) d.name = 'Leerling';
     if (typeof d.muted !== 'boolean') d.muted = false;
     if (typeof d.chill !== 'boolean') d.chill = false;
     if (!d.grades) d.grades = {};
@@ -809,19 +809,19 @@ function newPlayer() {
 }
 
 const UPGRADES = [
-  { id: 'calc', icon: '🧮', name: 'Graphing Calculator', desc: '+1 shot per click. Spread the knowledge.', max: 4, apply: p => { p.s.spread++; } },
-  { id: 'highlighter', icon: '🖍️', name: 'Highlighter', desc: 'Shots pierce through +1 enemy.', max: 3, apply: p => { p.s.pierce++; } },
-  { id: 'coffee', icon: '☕', name: 'Cafeteria Coffee', desc: '+15% move speed, +10% fire rate. Tastes like sadness.', max: 3, apply: p => { p.s.speed *= 1.15; p.s.fireRate *= 1.1; } },
-  { id: 'stapler', icon: '📎', name: 'Stapler', desc: '+25% fire rate. Clack clack clack.', max: 4, apply: p => { p.s.fireRate *= 1.25; } },
-  { id: 'cheat', icon: '📝', name: 'Cheat Sheet', desc: '+15% chance for a CRIT (x2.5 damage).', max: 3, apply: p => { p.s.crit += 0.15; } },
-  { id: 'eraser', icon: '🧽', name: 'Eraser', desc: 'Dashing erases enemy bullets. -20% dash cooldown.', max: 2, apply: p => { p.s.eraser = true; p.s.dashCd *= 0.8; } },
-  { id: 'tutor', icon: '📚', name: 'Tutoring', desc: '+1 max life and a full heal.', max: 3, apply: p => { p.maxhp++; p.hp = p.maxhp; } },
-  { id: 'explain', icon: '✏️', name: 'Extra Explanation', desc: '+35% damage and chunkier shots.', max: 3, apply: p => { p.s.dmg *= 1.35; p.s.bsize += 1.2; } },
-  { id: 'planner', icon: '📅', name: 'Planner', desc: 'INLEVEREN meter charges 40% faster.', max: 2, apply: p => { p.s.specialGain *= 1.4; } },
-  { id: 'bell', icon: '🔔', name: 'School Bell', desc: 'Getting hit rings a shockwave that wipes nearby bullets.', max: 1, apply: p => { p.s.bell = true; } },
-  { id: 'compass', icon: '📐', name: 'Compass', desc: 'A sharp compass orbits you. Stacks.', max: 3, apply: p => { p.s.compass++; } },
-  { id: 'laptop', icon: '💻', name: 'School Laptop', desc: 'Your shots gently home in on enemies.', max: 2, apply: p => { p.s.homing++; } },
-  { id: 'magnet', icon: '🧲', name: 'Fridge Magnet', desc: 'Points fly to you from anywhere. +20% score.', max: 1, apply: p => { p.s.magnet = true; p.s.scoreMul *= 1.2; } },
+  { id: 'calc', icon: '🧮', name: 'Grafische Rekenmachine', desc: '+1 schot per klik. Deel je kennis.', max: 4, apply: p => { p.s.spread++; } },
+  { id: 'highlighter', icon: '🖍️', name: 'Markeerstift', desc: 'Je schoten gaan door +1 vijand heen.', max: 3, apply: p => { p.s.pierce++; } },
+  { id: 'coffee', icon: '☕', name: 'Kantinekoffie', desc: '+15% loopsnelheid, +10% vuursnelheid. Smaakt naar verdriet.', max: 3, apply: p => { p.s.speed *= 1.15; p.s.fireRate *= 1.1; } },
+  { id: 'stapler', icon: '📎', name: 'Nietmachine', desc: '+25% vuursnelheid. Klak klak klak.', max: 4, apply: p => { p.s.fireRate *= 1.25; } },
+  { id: 'cheat', icon: '📝', name: 'Spiekbriefje', desc: '+15% kans op een KRIT (x2,5 schade).', max: 3, apply: p => { p.s.crit += 0.15; } },
+  { id: 'eraser', icon: '🧽', name: 'Gum', desc: 'Dashen gumt vijandelijke kogels uit. Dash laadt 20% sneller op.', max: 2, apply: p => { p.s.eraser = true; p.s.dashCd *= 0.8; } },
+  { id: 'tutor', icon: '📚', name: 'Bijles', desc: '+1 extra leven en je wordt volledig genezen.', max: 3, apply: p => { p.maxhp++; p.hp = p.maxhp; } },
+  { id: 'explain', icon: '✏️', name: 'Extra Uitleg', desc: '+35% schade en dikkere schoten.', max: 3, apply: p => { p.s.dmg *= 1.35; p.s.bsize += 1.2; } },
+  { id: 'planner', icon: '📅', name: 'Agenda', desc: 'Je INLEVEREN-meter laadt 40% sneller op.', max: 2, apply: p => { p.s.specialGain *= 1.4; } },
+  { id: 'bell', icon: '🔔', name: 'Schoolbel', desc: 'Word je geraakt, dan gaat de bel: een schokgolf wist kogels om je heen.', max: 1, apply: p => { p.s.bell = true; } },
+  { id: 'compass', icon: '📐', name: 'Passer', desc: 'Een scherpe passer draait om je heen. Stapelbaar.', max: 3, apply: p => { p.s.compass++; } },
+  { id: 'laptop', icon: '💻', name: 'Schoollaptop', desc: 'Je schoten zoeken zelf een beetje vijanden op.', max: 2, apply: p => { p.s.homing++; } },
+  { id: 'magnet', icon: '🧲', name: 'Koelkastmagneet', desc: 'Punten vliegen van overal naar je toe. +20% score.', max: 1, apply: p => { p.s.magnet = true; p.s.scoreMul *= 1.2; } },
 ];
 const UPG = Object.fromEntries(UPGRADES.map(u => [u.id, u]));
 
@@ -873,7 +873,7 @@ function updatePlayer(p, dt) {
 
   if (keyPressed('KeyE', 'KeyQ') || input.rclick) {
     if (p.special >= 1) doSpecial(p);
-    else if (p.denyCd <= 0) { Snd.sfx.deny(); p.denyCd = 0.4; floatText(p.x, p.y - 22, 'Not ready!', '#9fb3d1', 12, { dur: 0.6 }); }
+    else if (p.denyCd <= 0) { Snd.sfx.deny(); p.denyCd = 0.4; floatText(p.x, p.y - 22, 'Nog niet vol!', '#9fb3d1', 12, { dur: 0.6 }); }
   }
 
   if (p.s.compass) {
@@ -966,11 +966,11 @@ function doSpecial(p) {
 function hurtPlayer(p) {
   if (p.inv > 0 || p.dashT > 0 || p.dead || G.debugGod) return false;
   p.hp--; p.inv = 1.25; G.run.hits++;
-  if (G.combo >= 10) floatText(W / 2, 110, 'COMBO LOST', '#ff4d6d', 18);
+  if (G.combo >= 10) floatText(W / 2, 110, 'COMBO KWIJT', '#ff4d6d', 18);
   G.combo = 0;
   Snd.sfx.hurt(); addShake(12); flash('#ff2040', 0.45); hitstop(0.1); glitch(0.18);
   burst(p.x, p.y, ['#ff4d6d', '#ffffff'], 18, 260);
-  floatText(p.x, p.y - 26, pick(['OUCH!', 'AU!', '-1', 'ONVOLDOENDE!', 'OOF']), '#ff4d6d', 18);
+  floatText(p.x, p.y - 26, pick(['AU!', 'AUW!', '-1', 'ONVOLDOENDE!', 'OEF']), '#ff4d6d', 18);
   if (p.s.bell) {
     ringFx(p.x, p.y, '#ffd84a', 180, 0.5, 8); Snd.sfx.ping();
     for (let i = G.eb.length - 1; i >= 0; i--) if (dist(G.eb[i].x, G.eb[i].y, p.x, p.y) < 180) G.eb.splice(i, 1);
@@ -1222,7 +1222,7 @@ function eyes(e, sep, y, size, col = '#13233d') {
   ctx.beginPath(); ctx.arc(-sep + ox, y + oy, size * 0.55, 0, TAU); ctx.arc(sep + ox, y + oy, size * 0.55, 0, TAU); ctx.fill();
 }
 
-const KILL_WORDS = ['Goed!', 'Netjes!', 'Top!', 'Voldoende!', 'Prima!', 'Afgevinkt!', 'Nice!', 'Gelukt!'];
+const KILL_WORDS = ['Goed!', 'Netjes!', 'Top!', 'Voldoende!', 'Prima!', 'Afgevinkt!', 'Lekker!', 'Gelukt!'];
 const COMBO_TIERS = [[10, 'VOLDOENDE'], [20, 'RUIM VOLDOENDE'], [30, 'GOED'], [50, 'ZEER GOED'], [75, 'UITSTEKEND'], [100, 'CUM LAUDE']];
 
 const ENEMY = {
@@ -1517,7 +1517,7 @@ function bossSpawnMinion(e, type, n) {
 
 const BOSSES = {
   achtsteuur: {
-    name: 'HET 8STE UUR', quote: '"Nobody goes home early."', hp: 150, r: 50, color: '#7cc4ff', music: 'boss', sprite: 'achtsteuur',
+    name: 'HET 8STE UUR', quote: '"Niemand gaat eerder naar huis."', hp: 150, r: 50, color: '#7cc4ff', music: 'boss', sprite: 'achtsteuur',
     patterns: [
       { id: 'rings', dur: 2.8, tick(e, dt, t, s) { every(s, 'a', e.phase > 1 ? 0.42 : 0.6, dt, () => { s.n = (s.n || 0) + 1; eRing(e.x, e.y + 22, e.phase > 1 ? 18 : 14, 150, s.n * 0.2, { color: '#7cc4ff', r: 5.5 }); Snd.sfx.eshoot(); }); } },
       { id: 'summon', dur: 1.8, start(e) { bossSpawnMinion(e, e.phase > 1 ? 'telaat' : 'tussenuur', 3); } },
@@ -1543,7 +1543,7 @@ const BOSSES = {
     ],
   },
   werkstuk: {
-    name: 'HET WERKSTUK', quote: '"2000 words. Minimum. Sources required."', hp: 190, r: 52, color: '#2ee6b5', music: 'boss', sprite: 'werkstuk',
+    name: 'HET WERKSTUK', quote: '"2000 woorden. Minimaal. Met bronvermelding."', hp: 190, r: 52, color: '#2ee6b5', music: 'boss', sprite: 'werkstuk',
     patterns: [
       {
         id: 'words', dur: 3.4,
@@ -1568,10 +1568,10 @@ const BOSSES = {
         },
       },
     ],
-    onPhase(e) { floatText(e.x, e.y - 80, 'DEADLINE: NOW', '#ff5470', 22, { dur: 1.6 }); },
+    onPhase(e) { floatText(e.x, e.y - 80, 'DEADLINE: NU!', '#ff5470', 22, { dur: 1.6 }); },
   },
   gemiddelde: {
-    name: 'HET GEMIDDELDE', quote: '"I am what you are. On average."', hp: 220, r: 52, color: '#c48bff', music: 'boss', sprite: 'gemiddelde',
+    name: 'HET GEMIDDELDE', quote: '"Ik ben wat jij bent. Gemiddeld."', hp: 220, r: 52, color: '#c48bff', music: 'boss', sprite: 'gemiddelde',
     patterns: [
       { id: 'spiral', dur: 3.4, tick(e, dt, t, s) { every(s, 'a', 0.075, dt, () => { s.ang = (s.ang || 0) + 0.31; const arms = e.phase > 1 ? 4 : 2; for (let k = 0; k < arms; k++) eShot(e.x, e.y, s.ang + (k * TAU) / arms, 150, { color: '#c48bff', r: 5 }); }); } },
       { id: 'rain', dur: 3.0, tick(e, dt, t, s) { every(s, 'r', e.phase > 1 ? 0.12 : 0.17, dt, () => eShot(rand(AX + 15, AR - 15), AY + 4, Math.PI / 2 + rand(-0.12, 0.12), rand(140, 210), { kind: 'tile', text: fmtGrade(rand(1, 5.4)), color: '#e5484d', r: 8 })); } },
@@ -1589,10 +1589,10 @@ const BOSSES = {
       },
       { id: 'rings', dur: 2.6, tick(e, dt, t, s) { every(s, 'q', 0.5, dt, () => { s.n = (s.n || 0) + 1; eRing(e.x, e.y, 16, s.n % 2 ? 120 : 190, s.n * 0.2, { color: s.n % 2 ? '#c48bff' : '#ff6b70', r: 5 }); }); } },
     ],
-    onPhase(e) { floatText(e.x, e.y - 90, 'VOLDOENDE?! IMPOSSIBLE!', '#2fbf71', 22, { dur: 1.8 }); },
+    onPhase(e) { floatText(e.x, e.y - 90, 'VOLDOENDE?! ONMOGELIJK!', '#2fbf71', 22, { dur: 1.8 }); },
   },
   verzuim: {
-    name: 'DE VERZUIMCOÖRDINATOR', quote: '"Absent is absent."', hp: 240, r: 44, color: '#a58bff', music: 'boss', sprite: 'verzuim',
+    name: 'DE VERZUIMCOÖRDINATOR', quote: '"Afwezig is afwezig."', hp: 240, r: 44, color: '#a58bff', music: 'boss', sprite: 'verzuim',
     patterns: [
       {
         id: 'blink', dur: 3.2, own: true,
@@ -1619,7 +1619,7 @@ const BOSSES = {
     ],
   },
   mentor: {
-    name: 'MENTOR.EXE', quote: '"Automatically generated comment: DISAPPOINTING."', hp: 270, r: 54, color: '#4dffa6', music: 'final', sprite: 'mentor',
+    name: 'MENTOR.EXE', quote: '"Automatisch gegenereerde opmerking: TELEURSTELLEND."', hp: 270, r: 54, color: '#4dffa6', music: 'final', sprite: 'mentor',
     patterns: [
       { id: 'comments', dur: 3.0, tick(e, dt, t, s) { every(s, 'c', e.phase > 1 ? 0.35 : 0.5, dt, () => { eShot(e.x, e.y, aimP(e) + rand(-0.2, 0.2), 210, { kind: 'text', text: pick(MENTOR_LINES), color: e.phase > 1 ? '#ff6b70' : '#4dffa6', r: 8, size: 12 }); Snd.sfx.eshoot(); }); } },
       {
@@ -1647,7 +1647,7 @@ const BOSSES = {
     onPhase() { G.mentorInfected = true; glitch(0.5); },
   },
   onvoldoende: {
-    name: 'DE ONVOLDOENDE', quote: '"I am the 1,0 that never ends."', hp: 340, r: 56, color: '#ff3b5c', music: 'final', sprite: 'onvoldoende',
+    name: 'DE ONVOLDOENDE', quote: '"Ik ben de 1,0 die nooit ophoudt."', hp: 340, r: 56, color: '#ff3b5c', music: 'final', sprite: 'onvoldoende',
     patterns: [
       { id: 'hell', dur: 4.0, tick(e, dt, t, s) { every(s, 'h', 0.065, dt, () => { s.a = (s.a || 0) + 0.19 + (e.phase > 1 ? Math.sin(t * 1.5) * 0.12 : 0); const arms = e.phase > 1 ? 5 : 3; for (let k = 0; k < arms; k++) eShot(e.x, e.y, s.a + (k * TAU) / arms, 140, { color: '#ff3b5c', r: 5 }); }); } },
       { id: 'mines', dur: 2.8, tick(e, dt, t, s) { every(s, 'm', e.phase > 1 ? 0.35 : 0.5, dt, () => { const tx = rand(AX + 60, AR - 60), ty = rand(AY + 60, AB - 60); const d = dist(e.x, e.y, tx, ty); eShot(e.x, e.y, angTo(e.x, e.y, tx, ty), d * 1.6, { color: '#ff9f43', r: 7, acc: -d * 1.6, minSpd: 0, fuse: 1.0 }); }); } },
@@ -1674,7 +1674,7 @@ const BOSSES = {
         },
       },
     ],
-    onPhase(e) { glitch(0.8); floatText(e.x, e.y - 90, 'ERROR: GRADE OVERFLOW', '#ff3b5c', 20, { dur: 1.8 }); },
+    onPhase(e) { glitch(0.8); floatText(e.x, e.y - 90, 'FOUT: CIJFER-OVERLOOP', '#ff3b5c', 20, { dur: 1.8 }); },
   },
 };
 
@@ -1723,14 +1723,14 @@ function damageEnemy(e, dmg, crit, kvx = 0, kvy = 0) {
   if (e.dead || e.spawnT > 0 || e.ghost) return;
   e.hp -= dmg; e.flash = 0.07;
   if (!e.boss) { const k = 0.08 * (e.d.kb ?? 1); e.vx += kvx * k; e.vy += kvy * k; }
-  if (crit) { floatText(e.x + rand(-8, 8), e.y - e.r - 6, 'CRIT!', '#ffd84a', 13, { dur: 0.5 }); Snd.sfx.crit(); } else Snd.sfx.hit();
+  if (crit) { floatText(e.x + rand(-8, 8), e.y - e.r - 6, 'KRIT!', '#ffd84a', 13, { dur: 0.5 }); Snd.sfx.crit(); } else Snd.sfx.hit();
   if (e.boss && e.phase === 1 && e.hp <= e.maxhp * 0.5 && e.hp > 0) {
     e.phase = 2; e.pat = null; e.tele = null;
     flash('#ffffff', 0.5); addShake(14); Snd.sfx.roar(); glitch(0.25);
     for (const b of G.eb) burst(b.x, b.y, '#ffffff', 1, 60);
     G.eb.length = 0;
     ringFx(e.x, e.y, e.d.color, 300, 0.7, 10);
-    floatText(e.x, e.y - e.r - 30, 'PHASE 2', '#ffffff', 26, { dur: 1.4 });
+    floatText(e.x, e.y - e.r - 30, 'FASE 2', '#ffffff', 26, { dur: 1.4 });
     e.d.onPhase && e.d.onPhase(e);
   }
   if (e.hp <= 0) killEnemy(e);
@@ -1880,110 +1880,110 @@ const SPEAKERS = {
   gemiddelde: { name: 'HET GEMIDDELDE', color: '#c48bff', pitch: 0.65 },
   verzuim: { name: 'DE VERZUIMCOÖRDINATOR', color: '#a58bff', pitch: 0.5 },
   sys: { name: '', color: '#9fb3d1', pitch: 1.3 },
-  log: { name: 'SYSTEM LOG', color: '#4dff88', pitch: 1.6 },
+  log: { name: 'SYSTEEMLOG', color: '#4dff88', pitch: 1.6 },
 };
 
 const CHAPTERS = [
   {
-    id: 'rooster', num: 1, title: 'HET ROOSTER', sub: 'The schedule is melting', clock: '23:52', theme: 'rooster', music: 'level', par: 170,
+    id: 'rooster', num: 1, title: 'HET ROOSTER', sub: 'Het rooster smelt', clock: '23:52', theme: 'rooster', music: 'level', par: 170,
     steps: [
       { type: 'cutscene', id: 'prologue' },
       { type: 'card' },
       {
         type: 'dialog', lines: [
-          ['sys', '...You wake up inside the screen. Everything smells like whiteboard markers.'],
-          ['ping', '*ding!* Oh thank the server — a REAL student! Hi! I\'m PING!'],
-          ['ping', 'You know me. I\'m the notification bell. The one that tells you about new grades. ...Sorry about those.'],
-          ['you', 'Where am I? Why is everything so... blue?'],
-          ['ping', 'You\'re inside Somtoday! Something is eating the database. Grades are vanishing. Schedules are melting. Homework is BREEDING.'],
-          ['you', 'So... a normal Tuesday.'],
-          ['ping', 'NO! At 00:00 the report cards lock forever. If that THING reaches the Rapport-server first, every grade in the country becomes a 1,0.'],
-          ['you', 'Every grade?'],
-          ['ping', 'Every. Single. One. Even gym.'],
-          ['you', '...Okay. Now it\'s personal.'],
-          ['ping', 'Your pen is your weapon! [WASD] move · [MOUSE] aim · [HOLD CLICK] write · [SPACE] dash through danger.'],
-          ['ping', 'Beat enemies to fill your INLEVEREN meter. When it\'s full, press [E] or right-click to hand in EVERYTHING at once!'],
-          ['ping', 'Here they come — free periods gone feral! Don\'t let them haunt you!'],
+          ['sys', '...Je wordt wakker ín het scherm. Alles ruikt naar whiteboardstift.'],
+          ['ping', '*ding!* Oh, gelukkig — een ECHTE leerling! Hoi! Ik ben PING!'],
+          ['ping', 'Je kent me wel. Ik ben het meldingsbelletje. Die van "je hebt een nieuw cijfer". ...Sorry daarvoor trouwens.'],
+          ['you', 'Waar ben ik? En waarom is alles zo... blauw?'],
+          ['ping', 'Je zit ín Somtoday! Er eet iets aan de database. Cijfers verdwijnen. Roosters smelten. Huiswerk VERMENIGVULDIGT zich.'],
+          ['you', 'Dus... een normale dinsdag.'],
+          ['ping', 'NEE! Om 00:00 gaan de rapporten op slot. Als dat DING eerder bij de Rapport-server is, wordt elk cijfer van het hele land een 1,0.'],
+          ['you', 'Elk cijfer?'],
+          ['ping', 'Elk. Cijfer. Zelfs gym.'],
+          ['you', '...Oké. Nu is het persoonlijk.'],
+          ['ping', 'Je pen is je wapen! [WASD] lopen · [MUIS] richten · [KLIK VASTHOUDEN] schrijven · [SPATIE] dashen door gevaar heen.'],
+          ['ping', 'Versla vijanden om je INLEVEREN-meter te vullen. Is hij vol? Druk op [E] of rechtermuisknop en lever ALLES in één keer in!'],
+          ['ping', 'Daar komen ze — tussenuren die verwilderd zijn! Laat ze je niet achtervolgen!'],
         ],
       },
       { type: 'wave', groups: [[0, 'tussenuur', 4], [3, 'tussenuur', 3]] },
-      { type: 'dialog', lines: [['ping', 'Look out — LATE MARKS! They wind up, then charge. Dash right through them!']] },
+      { type: 'dialog', lines: [['ping', 'Pas op — TE-LAATMELDINGEN! Ze laden op en stormen dan op je af. Dash er dwars doorheen!']] },
       { type: 'wave', groups: [[0, 'tussenuur', 3], [0.5, 'telaat', 2], [4, 'telaat', 2], [6.5, 'tussenuur', 4]] },
-      { type: 'dialog', lines: [['ping', 'You\'re a natural! Here — I salvaged some school supplies from the lost & found.']] },
+      { type: 'dialog', lines: [['ping', 'Jij bent een natuurtalent! Hier — ik heb wat schoolspullen gered uit de gevonden voorwerpen.']] },
       { type: 'upgrade' },
-      { type: 'dialog', lines: [['ping', 'Tests incoming! They keep their distance and take cheap shots. Just like the real ones.']] },
+      { type: 'dialog', lines: [['ping', 'Toetsen in aantocht! Ze houden afstand en schieten op je als je het niet verwacht. Net als echte.']] },
       { type: 'wave', groups: [[0, 'toets', 2], [1, 'tussenuur', 4], [5, 'telaat', 3], [8, 'toets', 2], [9, 'tussenuur', 3]] },
       {
         type: 'dialog', lines: [
-          ['sys', 'The bell rings. Then it rings again. And again. It doesn\'t stop.'],
-          ['ping', 'Oh no. Oh no no no. That\'s not a normal bell. That\'s... the 8th period.'],
-          ['you', 'The 8th period doesn\'t even exist on Fridays.'],
-          ['ping', 'It exists NOW.'],
+          ['sys', 'De bel gaat. En dan nog een keer. En nog een keer. Hij stopt niet meer.'],
+          ['ping', 'Oh nee. Oh nee nee nee. Dat is geen normale bel. Dat is... het 8ste uur.'],
+          ['you', 'Op vrijdag bestáát het 8ste uur niet eens.'],
+          ['ping', 'NU wel.'],
         ],
       },
       { type: 'boss', boss: 'achtsteuur' },
       {
         type: 'dialog', lines: [
-          ['ping', 'You beat the 8th period! That has NEVER happened in recorded history!'],
-          ['log', '> MENTOR.EXE: rescheduling... removing "students" from schedule for optimal efficiency.'],
-          ['you', 'MENTOR.EXE? Who\'s that?'],
-          ['ping', 'The auto-mentor. The school installed it to "personalise learning". It writes all those comments. "Goed bezig!" "Let op je inzet."'],
-          ['ping', 'It\'s never written anything like THIS before. The trail leads to the homework tab. Come on!'],
+          ['ping', 'Je hebt het 8ste uur verslagen! Dat is in de geschiedenis van het onderwijs NOG NOOIT gebeurd!'],
+          ['log', '> MENTOR.EXE: rooster wordt herberekend... "leerlingen" worden verwijderd voor optimale efficiëntie.'],
+          ['you', 'MENTOR.EXE? Wie is dat?'],
+          ['ping', 'De automatische mentor. School heeft hem geïnstalleerd voor "gepersonaliseerd leren". Hij schrijft al die opmerkingen. "Goed bezig!" "Let op je inzet."'],
+          ['ping', 'Zoiets als DIT heeft hij nog nooit geschreven. Het spoor leidt naar het huiswerk-tabblad. Kom op!'],
         ],
       },
       { type: 'upgrade' },
     ],
   },
   {
-    id: 'huiswerk', num: 2, title: 'HET HUISWERK', sub: 'Everything you postponed', clock: '23:54', theme: 'huiswerk', music: 'homework', par: 180,
+    id: 'huiswerk', num: 2, title: 'HET HUISWERK', sub: 'Alles wat je hebt uitgesteld', clock: '23:54', theme: 'huiswerk', music: 'homework', par: 180,
     steps: [
       { type: 'card' },
       {
         type: 'dialog', lines: [
-          ['ping', 'Welcome to the Huiswerk tab. Every assignment you ever postponed ends up here.'],
-          ['you', 'I did all of those! ...Mostly. Some. I looked at them.'],
-          ['ping', 'They remember you, {name}. They remember EVERYTHING.'],
-          ['ping', 'Careful with the stacks — they split into loose pages when you hit them. Classic homework.'],
+          ['ping', 'Welkom bij Huiswerk. Elke opdracht die je ooit hebt uitgesteld, belandt hier.'],
+          ['you', 'Die heb ik allemaal gemaakt! ...Meestal. Sommige. Ik heb ernaar gekeken.'],
+          ['ping', 'Ze herinneren zich jou, {name}. Ze herinneren zich ALLES.'],
+          ['ping', 'Pas op met de stapels — als je ze raakt vallen ze uit elkaar in losse blaadjes. Typisch huiswerk.'],
         ],
       },
       { type: 'wave', groups: [[0, 'stapel', 2], [2, 'blaadje', 4], [5, 'stapel', 2], [7, 'tussenuur', 3]] },
-      { type: 'dialog', lines: [['ping', 'That red one\'s a DEADLINE. The longer you ignore it, the faster it gets. Sound familiar?']] },
+      { type: 'dialog', lines: [['ping', 'Die rode is een DEADLINE. Hoe langer je hem negeert, hoe sneller hij wordt. Klinkt bekend?']] },
       { type: 'wave', groups: [[0, 'deadline', 1], [1.5, 'stapel', 2], [4, 'deadline', 2], [6, 'blaadje', 5], [8, 'toets', 2]] },
       { type: 'upgrade' },
-      { type: 'dialog', lines: [['ping', 'Notifications?! Those are MY job! They orbit you and spam — pop them fast!']] },
+      { type: 'dialog', lines: [['ping', 'Meldingen?! Dat is MIJN werk! Ze cirkelen om je heen en spammen — klik ze snel weg!']] },
       { type: 'wave', groups: [[0, 'melding', 3], [2, 'stapel', 2], [5, 'deadline', 2], [7, 'melding', 2], [8, 'blaadje', 6], [10, 'toets', 2]] },
       {
         type: 'dialog', lines: [
-          ['sys', 'The paper piles shudder. Something enormous is being written.'],
-          ['ping', 'Oh no. It\'s the WERKSTUK. Two thousand words. Minimum.'],
-          ['you', 'Font size 12?'],
-          ['ping', 'Font size 12. Double spaced. With SOURCES.'],
-          ['werkstuk', 'SOURCE MISSING. SOURCE MISSING. SOURCE MISSING.'],
+          ['sys', 'De papierstapels trillen. Er wordt iets gigantisch geschreven.'],
+          ['ping', 'Oh nee. Het is HET WERKSTUK. Tweeduizend woorden. Minimaal.'],
+          ['you', 'Lettergrootte 12?'],
+          ['ping', 'Lettergrootte 12. Regelafstand 1,5. Met BRONNEN.'],
+          ['werkstuk', 'BRON ONTBREEKT. BRON ONTBREEKT. BRON ONTBREEKT.'],
         ],
       },
       { type: 'boss', boss: 'werkstuk' },
       {
         type: 'dialog', lines: [
-          ['werkstuk', '...bibliography... incomplete......'],
-          ['log', '> MENTOR.EXE: anomaly detected in grade database. Entity classification: ONVOLDOENDE.'],
-          ['log', '> MENTOR.EXE: countermeasure — lock out all students. A student who cannot log in cannot fail.'],
-          ['you', 'That\'s... technically true. And deeply evil.'],
-          ['ping', 'Wait. MENTOR.EXE isn\'t the monster. It\'s trying to FIGHT the monster. Badly.'],
-          ['ping', 'Whatever the Onvoldoende is, it\'s feeding in the grades tab. Let\'s go!'],
+          ['werkstuk', '...literatuurlijst... onvolledig......'],
+          ['log', '> MENTOR.EXE: afwijking gedetecteerd in cijferdatabase. Classificatie entiteit: ONVOLDOENDE.'],
+          ['log', '> MENTOR.EXE: tegenmaatregel — alle leerlingen buitensluiten. Wie niet kan inloggen, kan ook niet zakken.'],
+          ['you', 'Dat is... technisch gezien waar. En ook echt kwaadaardig.'],
+          ['ping', 'Wacht. MENTOR.EXE is niet het monster. Hij probeert het monster te BEVECHTEN. Alleen heel slecht.'],
+          ['ping', 'Wat die Onvoldoende ook is, hij vreet in het cijfers-tabblad. Gaan!'],
         ],
       },
       { type: 'upgrade' },
     ],
   },
   {
-    id: 'cijfers', num: 3, title: 'DE CIJFERS', sub: 'These numbers bite', clock: '23:56', theme: 'cijfers', music: 'grades', par: 190,
+    id: 'cijfers', num: 3, title: 'DE CIJFERS', sub: 'Deze getallen bijten', clock: '23:56', theme: 'cijfers', music: 'grades', par: 190,
     steps: [
       { type: 'card' },
       {
         type: 'dialog', lines: [
-          ['ping', 'The Cijfers tab. Careful — these numbers BITE. Especially the red ones.'],
-          ['you', 'I know. I\'ve met them.'],
-          ['ping', 'Insufficient grades fire rings of pure disappointment. Keep moving!'],
+          ['ping', 'Het Cijfers-tabblad. Voorzichtig — deze getallen BIJTEN. Vooral de rode.'],
+          ['you', 'Weet ik. Ik heb ze ontmoet.'],
+          ['ping', 'Onvoldoendes schieten ringen van pure teleurstelling. Blijf bewegen!'],
         ],
       },
       { type: 'wave', groups: [[0, 'cijfer', 3], [3, 'tussenuur', 4], [6, 'cijfer', 2]] },
@@ -1992,37 +1992,37 @@ const CHAPTERS = [
       { type: 'wave', groups: [[0, 'cijfer', 3], [0.5, 'melding', 2], [4, 'stapel', 2], [6, 'toets', 3], [8, 'cijfer', 3], [10, 'deadline', 2]] },
       {
         type: 'dialog', lines: [
-          ['sys', 'All the grades in the tab start flowing together, swirling into one terrible number.'],
-          ['ping', 'They\'re merging... into THE AVERAGE.'],
-          ['you', 'My average? Oh no. Not my average.'],
-          ['ping', 'Raise it! Every hit pushes it up! Get it over 5,5 and it\'ll crack!'],
+          ['sys', 'Alle cijfers in het tabblad stromen samen en kolken tot één verschrikkelijk getal.'],
+          ['ping', 'Ze smelten samen... tot HET GEMIDDELDE.'],
+          ['you', 'Mijn gemiddelde? Oh nee. Niet mijn gemiddelde.'],
+          ['ping', 'Haal het omhoog! Elke treffer duwt het hoger! Krijg het boven de 5,5 en het breekt!'],
         ],
       },
       { type: 'boss', boss: 'gemiddelde' },
       {
         type: 'dialog', lines: [
-          ['ping', 'TEN! A PERFECT TEN! I\'ve never delivered one of those before!', 'confetti'],
-          ['onv', 'So. You are the one eating my meals.', 'glitch'],
-          ['onv', 'Every 1,0 ever given. Every "insufficient". Every "see me after class". I am MADE of them.'],
-          ['onv', 'At midnight I will be EVERY grade. Stay out of the Absence records, little student. It is dark there.', 'glitch'],
-          ['ping', '...it said not to go to the Absence records.'],
-          ['you', 'So we\'re going to the Absence records.'],
-          ['ping', 'We are SO going to the Absence records.'],
+          ['ping', 'EEN TIEN! EEN DIKKE VETTE TIEN! Zo eentje heb ik nog nooit mogen bezorgen!', 'confetti'],
+          ['onv', 'Zo. Jij bent dus degene die mijn maaltijden opeet.', 'glitch'],
+          ['onv', 'Elke 1,0 die ooit gegeven is. Elke "onvoldoende". Elk "kom even na de les". Daar ben ik van GEMAAKT.'],
+          ['onv', 'Om middernacht ben ik ELK cijfer. Blijf weg uit de Afwezigheid, kleine leerling. Het is daar donker.', 'glitch'],
+          ['ping', '...hij zei dat we niet naar de Afwezigheid moeten gaan.'],
+          ['you', 'Dus we gaan naar de Afwezigheid.'],
+          ['ping', 'We gaan ZÓ naar de Afwezigheid.'],
         ],
       },
       { type: 'upgrade' },
     ],
   },
   {
-    id: 'afwezig', num: 4, title: 'DE AFWEZIGHEID', sub: 'Lights out', clock: '23:58', theme: 'afwezig', music: 'dark', par: 200,
+    id: 'afwezig', num: 4, title: 'DE AFWEZIGHEID', sub: 'Lichten uit', clock: '23:58', theme: 'afwezig', music: 'dark', par: 200,
     steps: [
       { type: 'card' },
       {
         type: 'dialog', lines: [
-          ['ping', 'It\'s dark here because nobody\'s ever here. Get it? Absence? ...I\'ll glow as bright as I can. Stay close.'],
-          ['ping', 'Ghosts of skipped classes haunt this place. They vanish — then pop up right next to you.'],
-          ['you', 'I have never skipped a class in my life.'],
-          ['ping', 'Then why does that one have your NAME on it?'],
+          ['ping', 'Het is hier donker omdat er nooit iemand is. Snap je? Afwezigheid? ...Ik schijn zo fel als ik kan. Blijf dichtbij.'],
+          ['ping', 'Hier spoken de geesten van gespijbelde lessen. Ze verdwijnen — en duiken dan pal naast je op.'],
+          ['you', 'Ik heb nog nooit van mijn leven gespijbeld.'],
+          ['ping', 'Waarom staat jouw NAAM dan op die ene?'],
         ],
       },
       { type: 'wave', groups: [[0, 'spook', 3], [3, 'tussenuur', 4], [6, 'spook', 2]] },
@@ -2031,62 +2031,62 @@ const CHAPTERS = [
       { type: 'wave', groups: [[0, 'spook', 4], [2, 'cijfer', 2], [5, 'toets', 2], [7, 'spook', 3], [9, 'stapel', 2], [11, 'telaat', 3]] },
       {
         type: 'dialog', lines: [
-          ['sys', 'Footsteps. A clipboard clicks.'],
-          ['verzuim', '{name}. You were marked ABSENT on the 14th of March.'],
-          ['you', 'I had the flu!'],
-          ['verzuim', 'Was there... a NOTE?'],
-          ['you', '...My mom called?'],
-          ['verzuim', 'NO NOTE. NO MERCY.', 'shake'],
+          ['sys', 'Voetstappen. Een klembord klikt.'],
+          ['verzuim', '{name}. Jij stond op 14 maart AFWEZIG.'],
+          ['you', 'Ik had griep!'],
+          ['verzuim', 'Was er... een BRIEFJE?'],
+          ['you', '...Mijn moeder heeft gebeld?'],
+          ['verzuim', 'GEEN BRIEFJE. GEEN GENADE.', 'shake'],
         ],
       },
       { type: 'boss', boss: 'verzuim' },
       {
         type: 'dialog', lines: [
-          ['ping', 'You did it! The lights are coming back on!'],
-          ['log', '> MENTOR.EXE: containment failed. ONVOLDOENDE has reached /rapport.'],
-          ['log', '> MENTOR.EXE: last resort — merging with the entity to lock it inside myself.'],
-          ['log', '> MENTOR.EXE: goodbye. goed bezig, everyone. let op je inz—'],
-          ['ping', 'No... it\'s going to sacrifice itself. And it\'s going to LOSE.'],
-          ['ping', '{name}, we have to get to the Rapport. NOW.'],
+          ['ping', 'Het is je gelukt! De lichten gaan weer aan!'],
+          ['log', '> MENTOR.EXE: inperking mislukt. ONVOLDOENDE heeft /rapport bereikt.'],
+          ['log', '> MENTOR.EXE: laatste redmiddel — samensmelten met de entiteit en hem in mij opsluiten.'],
+          ['log', '> MENTOR.EXE: vaarwel. goed bezig, allemaal. let op je inz—'],
+          ['ping', 'Nee... hij gaat zichzelf opofferen. En hij gaat VERLIEZEN.'],
+          ['ping', '{name}, we moeten naar het Rapport. NU.'],
         ],
       },
       { type: 'upgrade' },
     ],
   },
   {
-    id: 'rapport', num: 5, title: 'HET RAPPORT', sub: 'Midnight', clock: '23:59', theme: 'rapport', music: 'final', par: 220,
+    id: 'rapport', num: 5, title: 'HET RAPPORT', sub: 'Middernacht', clock: '23:59', theme: 'rapport', music: 'final', par: 220,
     steps: [
       { type: 'card' },
       {
         type: 'dialog', lines: [
-          ['sys', '23:59:30. The Rapport-server hums like a dying fridge.'],
-          ['mentor', 'STUDENT {name}. AUTOMATICALLY GENERATED COMMENT: YOU WILL NOT MAKE IT.', 'glitch'],
-          ['ping', 'That\'s MENTOR.EXE! It\'s... it\'s been taken over!'],
-          ['mentor', 'WATCH. YOUR. EFFORT.', 'shake'],
+          ['sys', '23:59:30. De Rapport-server zoemt als een stervende koelkast.'],
+          ['mentor', 'LEERLING {name}. AUTOMATISCH GEGENEREERDE OPMERKING: JIJ GAAT HET NIET HALEN.', 'glitch'],
+          ['ping', 'Dat is MENTOR.EXE! Hij is... hij is overgenomen!'],
+          ['mentor', 'LET. OP. JE. INZET.', 'shake'],
         ],
       },
       { type: 'boss', boss: 'mentor' },
       {
         type: 'dialog', lines: [
-          ['mentorok', '...st...udent... it\'s inside... me... hit it... HARDER...'],
-          ['onv', 'FINALLY. THE SHELL CRACKS.', 'glitch'],
-          ['onv', 'Look at you. One student. One pen. Against every failing grade in history.'],
-          ['you', 'I\'ve survived four years of exam weeks. You\'re just a number.'],
-          ['onv', 'I AM THE NUMBER.', 'shake'],
-          ['ping', '{name}! Give it EVERYTHING! This is the final test!'],
+          ['mentorok', '...leer...ling... hij zit in... mij... raak hem... HARDER...'],
+          ['onv', 'EINDELIJK. DE SCHIL BREEKT.', 'glitch'],
+          ['onv', 'Kijk nou. Eén leerling. Eén pen. Tegen elk onvoldoende cijfer uit de geschiedenis.'],
+          ['you', 'Ik heb vier jaar toetsweken overleefd. Jij bent gewoon een getal.'],
+          ['onv', 'IK BEN HET GETAL.', 'shake'],
+          ['ping', '{name}! Geef ALLES! Dit is de eindtoets!'],
         ],
       },
       { type: 'heal' },
       { type: 'boss', boss: 'onvoldoende' },
       {
         type: 'dialog', lines: [
-          ['sys', '00:00. The clock strikes midnight... and every grade locks in. Correctly.'],
-          ['mentorok', '...system restored. thank you, {name}.'],
-          ['mentorok', 'automatically generated comment: ...no. Not automatic this time.'],
-          ['mentorok', 'Goed bezig. Genuinely.'],
-          ['ping', 'WE DID IT! The database is safe! Every grade is back where it belongs!', 'confetti'],
-          ['you', 'Wait. The grade I came to check in the first place. What did I get?'],
-          ['ping', 'Oh! Let me fetch it! *ding*'],
+          ['sys', '00:00. Het slaat middernacht... en elk cijfer gaat op slot. Correct.'],
+          ['mentorok', '...systeem hersteld. dank je, {name}.'],
+          ['mentorok', 'automatisch gegenereerde opmerking: ...nee. Deze keer niet automatisch.'],
+          ['mentorok', 'Goed bezig. Echt gemeend.'],
+          ['ping', 'HET IS ONS GELUKT! De database is veilig! Elk cijfer staat weer waar het hoort!', 'confetti'],
+          ['you', 'Wacht. Het cijfer waarvoor ik überhaupt inlogde. Wat heb ik gehaald?'],
+          ['ping', 'Oh! Ik haal het even op! *ding*'],
         ],
       },
     ],
@@ -2097,29 +2097,29 @@ const CREDITS = [
   ['SOMQUEST', 'title'],
   ['Het Laatste Rapport', 'sub'],
   ['', ''],
-  ['A fan-made story mod for Somtoday', ''],
-  ['Not affiliated with Somtoday or Topicus', 'small'],
+  ['Een fan-made verhaalmod voor Somtoday', ''],
+  ['Niet officieel verbonden aan Somtoday of Topicus', 'small'],
   ['', ''],
-  ['STARRING', 'head'],
-  ['{name} as The Student', ''],
-  ['PING as the notification bell', ''],
-  ['MENTOR.EXE as itself (recovering)', ''],
-  ['DE ONVOLDOENDE as every 1,0 ever given', ''],
+  ['MET IN DE HOOFDROL', 'head'],
+  ['{name} als De Leerling', ''],
+  ['PING als het meldingsbelletje', ''],
+  ['MENTOR.EXE als zichzelf (aan het herstellen)', ''],
+  ['DE ONVOLDOENDE als elke 1,0 ooit gegeven', ''],
   ['Het 8ste Uur · Het Werkstuk · Het Gemiddelde', ''],
-  ['De Verzuimcoördinator (still waiting for that note)', ''],
+  ['De Verzuimcoördinator (wacht nog steeds op dat briefje)', ''],
   ['', ''],
-  ['SPECIAL THANKS', 'head'],
-  ['Everyone who ever refreshed the grades tab at midnight', ''],
-  ['Every teacher who wrote "goed bezig" and meant it', ''],
-  ['The cafeteria coffee, for nothing', ''],
+  ['MET DANK AAN', 'head'],
+  ['Iedereen die ooit om middernacht het cijfers-tabblad ververste', ''],
+  ['Elke docent die "goed bezig" schreef en het meende', ''],
+  ['De kantinekoffie, voor helemaal niks', ''],
   ['', ''],
-  ['No homework was harmed in the making of this game.', 'small'],
-  ['Okay, some homework was harmed.', 'small'],
+  ['Er is geen huiswerk beschadigd tijdens het maken van deze game.', 'small'],
+  ['Oké, een beetje huiswerk.', 'small'],
   ['', ''],
-  ['TOETSWEEK MODE UNLOCKED', 'head'],
-  ['Endless waves. Every boss. How long can you last?', ''],
+  ['TOETSWEEK-MODUS ONTGRENDELD', 'head'],
+  ['Eindeloze golven. Elke baas. Hoe lang hou jij het vol?', ''],
   ['', ''],
-  ['See you next report. *ding*', 'sub'],
+  ['Tot het volgende rapport. *ding*', 'sub'],
 ];
 
 // ── 06-game.js ──
@@ -2180,7 +2180,7 @@ function startChapter(ci) {
 
 function startEndless() {
   const r = G.run;
-  r.steps = [{ type: 'card', title: 'TOETSWEEK', sub: 'Every boss. Endless waves. No mercy.', label: 'ENDLESS MODE', clock: `BEST: WAVE ${Save.data.endlessBest}` }];
+  r.steps = [{ type: 'card', title: 'TOETSWEEK', sub: 'Elke baas. Eindeloze golven. Geen genade.', label: 'EINDELOZE MODUS', clock: `RECORD: GOLF ${Save.data.endlessBest}` }];
   r.si = -1; r.hits = 0; r.time = 0; r.endlessN = 0;
   G.theme = 'rooster'; G.hpMul = 1;
   resetArena(); freshPlayer();
@@ -2232,7 +2232,7 @@ function nextStep() {
       G.cutscene = { id: st.id, t: 0, ev: {} };
       break;
     case 'card':
-      G.card = { t: 0, title: st.title || ch.title, sub: st.sub || ch.sub, label: st.label || `CHAPTER ${ch.num}`, clock: st.clock || ch.clock };
+      G.card = { t: 0, title: st.title || ch.title, sub: st.sub || ch.sub, label: st.label || `HOOFDSTUK ${ch.num}`, clock: st.clock || ch.clock };
       Snd.sfx.ping();
       break;
     case 'dialog':
@@ -2244,7 +2244,7 @@ function nextStep() {
     case 'upgrade': openUpgrade(); break;
     case 'heal':
       G.player.hp = G.player.maxhp; G.player.special = 1;
-      Snd.sfx.heal(); floatText(G.player.x, G.player.y - 30, 'FULL HEAL + INLEVEREN READY', '#2fbf71', 16, { dur: 1.6 });
+      Snd.sfx.heal(); floatText(G.player.x, G.player.y - 30, 'VOLLEDIG GENEZEN + INLEVEREN KLAAR', '#2fbf71', 16, { dur: 1.6 });
       burst(G.player.x, G.player.y, '#2fbf71', 24, 200);
       nextStep();
       break;
@@ -2260,7 +2260,7 @@ function startWave(st) {
   const r = G.run;
   r.waveNum++;
   r.wave = { t: 0, queue: st.groups.map(g => ({ at: g[0], type: g[1], n: g[2] })).sort((a, b) => a.at - b.at), clearT: 0, cleared: false };
-  G.banner = { text: st.endless ? `WAVE ${st.endless}` : `WAVE ${r.waveNum}/${r.waveTotal}`, t: 0 };
+  G.banner = { text: st.endless ? `GOLF ${st.endless}` : `GOLF ${r.waveNum}/${r.waveTotal}`, t: 0 };
 }
 
 function updateWave(dt) {
@@ -2274,7 +2274,7 @@ function updateWave(dt) {
   const alive = G.enemies.some(e => !e.dead);
   if (!alive && w.queue.length) w.t = Math.max(w.t, w.queue[0].at - 0.5);
   if (!alive && !w.queue.length) {
-    if (!w.cleared) { w.cleared = true; floatText(W / 2, H / 2 - 30, 'CLEARED!', '#2fbf71', 36, { dur: 1.2, vy: -12 }); Snd.sfx.confirm(); }
+    if (!w.cleared) { w.cleared = true; floatText(W / 2, H / 2 - 30, 'GEHAALD!', '#2fbf71', 36, { dur: 1.2, vy: -12 }); Snd.sfx.confirm(); }
     w.clearT += dt;
     if (w.clearT > 1.2) { G.run.wave = null; nextStep(); }
   }
@@ -2301,7 +2301,7 @@ function updateDyingBoss(rdt) {
     ringFx(db.x, db.y, '#ffffff', 650, 0.9, 22); ringFx(db.x, db.y, db.e.d.color, 420, 0.7, 12);
     burst(db.x, db.y, [db.e.d.color, '#ffffff', '#ffd84a'], 90, 620, { life: 2 });
     debris(db.x, db.y, '#ffffff', 22, 420);
-    floatText(W / 2, H / 2 - 20, 'DEFEATED', '#ffd84a', 46, { dur: 1.8, vy: -8 });
+    floatText(W / 2, H / 2 - 20, 'VERSLAGEN', '#ffd84a', 46, { dur: 1.8, vy: -8 });
   }
   if (db.t > 3.4) {
     G.dyingBoss = null; G.boss = null;
@@ -2399,7 +2399,7 @@ function drawDialog() {
     ctx.fillStyle = 'rgba(2,14,8,0.95)'; rr(x, y, w, h, 8); ctx.fill();
     ctx.strokeStyle = '#4dff88'; ctx.lineWidth = 2; rr(x, y, w, h, 8); ctx.stroke();
     ctx.fillStyle = '#4dff88'; ctx.fillRect(x, y, w, 26);
-    txt('SYSTEM LOG — /var/somtoday/mentor.log', x + 12, y + 13, { size: 12, font: MONO, color: '#02140a' });
+    txt('SYSTEEMLOG — /var/somtoday/mentor.log', x + 12, y + 13, { size: 12, font: MONO, color: '#02140a' });
     const lines = wrapText(shown + (Math.floor(G.t * 3) % 2 ? '█' : ''), w - 40, `700 17px ${MONO}`);
     lines.forEach((l, i) => txt(l, x + 20, y + 50 + i * 24, { size: 17, font: MONO, color: '#4dff88' }));
     ctx.fillStyle = 'rgba(0,0,0,0.25)'; for (let i = 0; i < h; i += 3) ctx.fillRect(x, y + i, w, 1);
@@ -2433,7 +2433,7 @@ function drawDialog() {
       txt(l, x + 134, ly, { size: 19, weight: 600, color: '#eef4ff' });
     });
     if (done) txt('▼', x + w - 26, y + h - 20 + Math.sin(G.t * 6) * 3, { size: 14, color: sp.color, align: 'center' });
-    txt('TAB skip', x + w - 50, y + h - 20, { size: 10, color: 'rgba(255,255,255,0.3)', align: 'right' });
+    txt('TAB overslaan', x + w - 50, y + h - 20, { size: 10, color: 'rgba(255,255,255,0.3)', align: 'right' });
   }
   ctx.restore();
 }
@@ -2475,8 +2475,8 @@ function drawUpgrade() {
   ctx.fillStyle = `rgba(3,6,16,${0.75 * clamp(u.t / 0.3, 0, 1)})`; ctx.fillRect(0, 0, W, H);
   const k0 = ease.outCubic(clamp(u.t / 0.4, 0, 1));
   ctx.globalAlpha = k0;
-  txt('PICK YOUR SCHOOL SUPPLIES', W / 2, 78 - (1 - k0) * 20, { size: 30, weight: 900, align: 'center', color: '#ffffff' });
-  txt('Locker #404 — Lost & Found', W / 2, 108, { size: 14, align: 'center', color: th.accent, weight: 700 });
+  txt('KIES JE SCHOOLSPULLEN', W / 2, 78 - (1 - k0) * 20, { size: 30, weight: 900, align: 'center', color: '#ffffff' });
+  txt('Kluisje #404 — Gevonden voorwerpen', W / 2, 108, { size: 14, align: 'center', color: th.accent, weight: 700 });
   ctx.globalAlpha = 1;
   const n = u.choices.length, cw = 236, ch = 290, gap = 28;
   const x0 = W / 2 - (n * cw + (n - 1) * gap) / 2;
@@ -2504,7 +2504,7 @@ function drawUpgrade() {
     ctx.fillText(c.icon, cw / 2, 48 + (sel ? Math.sin(G.t * 5) * 4 : 0));
     txt(c.name, cw / 2, 120, { size: 18, weight: 900, align: 'center' });
     const lv = upgradeCount(c.id);
-    const tag = lv ? `LV ${lv} → ${lv + 1}` : 'NEW';
+    const tag = lv ? `NIV ${lv} → ${lv + 1}` : 'NIEUW';
     ctx.font = `900 11px ${FONT}`;
     const tw = ctx.measureText(tag).width + 16;
     ctx.fillStyle = lv ? '#ffd84a' : '#2fbf71'; rr(cw / 2 - tw / 2, 136, tw, 20, 10); ctx.fill();
@@ -2579,11 +2579,11 @@ function drawBanner() {
 function fmtTime(s) { s = Math.floor(s); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
 
 function teacherComment(g) {
-  if (g >= 9.5) return 'Uitstekend! Automatically generated comment: ...wow.';
-  if (g >= 8) return 'Goed bezig! Keep this up.';
-  if (g >= 6.5) return 'Ruim voldoende. Solid work.';
+  if (g >= 9.5) return 'Uitstekend! Automatisch gegenereerde opmerking: ...wauw.';
+  if (g >= 8) return 'Goed bezig! Ga zo door.';
+  if (g >= 6.5) return 'Ruim voldoende. Netjes gewerkt.';
   if (g >= 5.5) return 'Voldoende. Let op je inzet.';
-  return 'Onvoldoende... but hey, you survived.';
+  return 'Onvoldoende... maar hé, je hebt het overleefd.';
 }
 
 function drawChReport() {
@@ -2596,7 +2596,7 @@ function drawChReport() {
   ctx.fillStyle = '#0d1630'; rr(x, y, w, h, 18); ctx.fill();
   ctx.strokeStyle = th.accent; ctx.lineWidth = 2; rr(x, y, w, h, 18); ctx.stroke();
   ctx.fillStyle = th.accent; rr(x, y, w, 54, 18); ctx.fill(); ctx.fillRect(x, y + 36, w, 18);
-  txt(`CHAPTER ${c.ch.num} COMPLETE`, x + 24, y + 27, { size: 22, weight: 900, color: '#071022' });
+  txt(`HOOFDSTUK ${c.ch.num} VOLTOOID`, x + 24, y + 27, { size: 22, weight: 900, color: '#071022' });
   txt(c.ch.title, x + w - 24, y + 27, { size: 14, weight: 800, color: '#071022', align: 'right' });
   const shownG = 1 + (c.grade - 1) * ease.outCubic(clamp((t - 0.5) / 1.2, 0, 1));
   if (t > 0.5 && t < 1.7 && Math.floor(t * 30) % 2) Snd.sfx.tick();
@@ -2605,7 +2605,7 @@ function drawChReport() {
   ctx.fillStyle = col; rr(x + 40, y + 90, 160, 130, 16); ctx.fill();
   txt(fmtGrade(shownG), x + 120, y + 150, { size: 56, weight: 900, align: 'center' });
   txt('CIJFER', x + 120, y + 200, { size: 12, weight: 900, align: 'center', color: 'rgba(255,255,255,0.8)' });
-  const rows = [['Hits taken', c.hits], ['Time', fmtTime(c.time)], ['Best combo', c.combo], ['Retakes', c.retakes], ['Score', G.score.toLocaleString('nl-NL')]];
+  const rows = [['Keer geraakt', c.hits], ['Tijd', fmtTime(c.time)], ['Beste combo', c.combo], ['Herkansingen', c.retakes], ['Score', G.score.toLocaleString('nl-NL')]];
   rows.forEach((r, i) => {
     if (t < 0.6 + i * 0.12) return;
     txt(r[0], x + 240, y + 100 + i * 28, { size: 15, weight: 600, color: '#9fb3d1' });
@@ -2614,8 +2614,11 @@ function drawChReport() {
   if (c.landed) {
     ctx.fillStyle = 'rgba(77,255,166,0.08)'; rr(x + 40, y + 248, w - 80, 46, 10); ctx.fill();
     txt('MENTOR.EXE:', x + 56, y + 271, { size: 12, weight: 900, color: '#4dffa6', font: MONO });
-    txt(teacherComment(c.grade), x + 160, y + 271, { size: 14, weight: 600, color: '#d9fff0' });
-    if (Math.floor(G.t * 2) % 2) txt('click / enter to continue', x + w / 2, y + h - 22, { size: 13, align: 'center', color: 'rgba(255,255,255,0.5)' });
+    const comment = teacherComment(c.grade);
+    let cs = 14;
+    for (; cs > 10; cs--) { ctx.font = `600 ${cs}px ${FONT}`; if (ctx.measureText(comment).width <= w - 220) break; }
+    txt(comment, x + 160, y + 271, { size: cs, weight: 600, color: '#d9fff0' });
+    if (Math.floor(G.t * 2) % 2) txt('klik / enter om verder te gaan', x + w / 2, y + h - 22, { size: 13, align: 'center', color: 'rgba(255,255,255,0.5)' });
   }
   ctx.restore();
 }
@@ -2623,13 +2626,13 @@ function drawChReport() {
 function drawPause() {
   ctx.save();
   ctx.fillStyle = 'rgba(3,6,16,0.8)'; ctx.fillRect(0, 0, W, H);
-  glitchText('PAUSED', W / 2, 150, 54, '#ffffff', Math.random() < 0.05 ? 2 : 0.3);
-  txt('Even pauze. Grab a stroopwafel.', W / 2, 195, { size: 15, italic: true, weight: 600, align: 'center', color: '#9fb3d1' });
+  glitchText('GEPAUZEERD', W / 2, 150, 54, '#ffffff', Math.random() < 0.05 ? 2 : 0.3);
+  txt('Even pauze. Pak een stroopwafel.', W / 2, 195, { size: 15, italic: true, weight: 600, align: 'center', color: '#9fb3d1' });
   drawMenu(pauseItems(), G.pauseSel, 260);
   ctx.restore();
 }
 function pauseItems() {
-  return [{ id: 'resume', label: 'RESUME' }, { id: 'sound', label: `SOUND: ${Snd.muted ? 'OFF' : 'ON'}` }, { id: 'title', label: 'QUIT TO TITLE' }, { id: 'quit', label: 'BACK TO SOMTODAY' }];
+  return [{ id: 'resume', label: 'VERDER SPELEN' }, { id: 'sound', label: `GELUID: ${Snd.muted ? 'UIT' : 'AAN'}` }, { id: 'title', label: 'NAAR HET TITELSCHERM' }, { id: 'quit', label: 'TERUG NAAR SOMTODAY' }];
 }
 
 // generic vertical menu
@@ -2683,7 +2686,7 @@ function drawHUD() {
   txt('SOM', 46, 19, { size: 16, weight: 900 });
   ctx.font = `900 16px ${FONT}`;
   txt('QUEST', 46 + ctx.measureText('SOM').width, 19, { size: 16, weight: 900, color: th.accent });
-  const label = r.mode === 'endless' ? `TOETSWEEK · WAVE ${r.endlessN}` : `CH.${CHAPTERS[r.chapter].num} · ${CHAPTERS[r.chapter].title}`;
+  const label = r.mode === 'endless' ? `TOETSWEEK · GOLF ${r.endlessN}` : `H${CHAPTERS[r.chapter].num} · ${CHAPTERS[r.chapter].title}`;
   txt(label, 46, 38, { size: 10, weight: 800, color: '#9fb3d1' });
   // lives
   txt('LEVENS', 214, 14, { size: 9, weight: 900, color: '#9fb3d1' });
@@ -2698,7 +2701,7 @@ function drawHUD() {
   // inleveren meter
   const mx = 214 + Math.max(5, p.maxhp) * 24 + 20, mw = 170;
   const ready = p.special >= 1;
-  txt(ready ? 'INLEVEREN READY! [E]' : 'INLEVEREN [E]', mx, 14, { size: 9, weight: 900, color: ready ? '#ffd84a' : '#9fb3d1' });
+  txt(ready ? 'INLEVEREN KLAAR! [E]' : 'INLEVEREN [E]', mx, 14, { size: 9, weight: 900, color: ready ? '#ffd84a' : '#9fb3d1' });
   ctx.fillStyle = 'rgba(255,255,255,0.08)'; rr(mx, 26, mw, 14, 7); ctx.fill();
   const mg = ctx.createLinearGradient(mx, 0, mx + mw, 0);
   mg.addColorStop(0, '#ff9f43'); mg.addColorStop(1, '#ffd84a');
@@ -2714,7 +2717,7 @@ function drawHUD() {
   }
   // score + clock
   txt(G.score.toLocaleString('nl-NL'), W - 20, 20, { size: 20, weight: 900, align: 'right' });
-  let clock = r.mode === 'endless' ? `BEST WAVE ${Save.data.endlessBest}` : CHAPTERS[r.chapter].clock;
+  let clock = r.mode === 'endless' ? `RECORD: GOLF ${Save.data.endlessBest}` : CHAPTERS[r.chapter].clock;
   if (r.mode === 'story' && r.chapter === CHAPTERS.length - 1) {
     const secs = Math.min(59, 30 + Math.floor(r.time / 6));
     clock = secs >= 59 && Math.floor(G.t * 3) % 2 ? '23:59:--' : `23:59:${String(secs).padStart(2, '0')}`;
@@ -2763,11 +2766,11 @@ function drawPrologue() {
   const c = G.cutscene, t = c.t;
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
   if (t < 2.8) {
-    const s = '23:58 — the night before report cards.';
+    const s = '23:58 — de avond voor de rapporten.';
     const n = Math.floor(clamp((t - 0.3) * 24, 0, s.length));
     if (n > (c.lastN || 0)) { c.lastN = n; Snd.sfx.type(1.3); }
     txt(s.slice(0, n) + (Math.floor(t * 3) % 2 ? '_' : ''), W / 2, H / 2, { size: 22, font: MONO, align: 'center', color: '#d6e4ff', weight: 600 });
-    if (t > 1.6) txt('"Just one quick look at my grades..."', W / 2, H / 2 + 40, { size: 16, italic: true, align: 'center', color: '#6f84a8', weight: 600 });
+    if (t > 1.6) txt('"Nog één keer snel naar mijn cijfers kijken..."', W / 2, H / 2 + 40, { size: 16, italic: true, align: 'center', color: '#6f84a8', weight: 600 });
     return;
   }
   if (t >= 7.6) {
@@ -2831,7 +2834,7 @@ function drawPrologue() {
     ctx.fillStyle = '#1a0006'; rr(-230, -50, 460, 100, 10); ctx.fill();
     ctx.strokeStyle = '#ff3b5c'; ctx.lineWidth = 3; rr(-230, -50, 460, 100, 10); ctx.stroke();
     glitchText('ERROR 404: CIJFER NIET GEVONDEN', 0, -12, 20, '#ff3b5c', 1.5);
-    txt('something is eating the database', 0, 20, { size: 13, font: MONO, align: 'center', color: '#ff8a9c' });
+    txt('er eet iets aan de database', 0, 20, { size: 13, font: MONO, align: 'center', color: '#ff8a9c' });
     ctx.restore();
   }
   if (t > 6.9) {
@@ -2856,7 +2859,7 @@ function drawPrologue() {
     if (t > 4.9 && t < 5.3) { ctx.strokeStyle = 'rgba(30,111,217,0.6)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, (t - 4.9) * 80, 0, TAU); ctx.stroke(); }
   }
   ctx.restore();
-  if (t > 0.4) txt('click / enter to skip', W - 16, H - 14, { size: 11, align: 'right', color: 'rgba(255,255,255,0.3)' });
+  if (t > 0.4) txt('klik / enter om over te slaan', W - 16, H - 14, { size: 11, align: 'right', color: 'rgba(255,255,255,0.3)' });
 }
 
 // ───────────────────────────── scenes: update ─────────────────────────────
@@ -2871,13 +2874,13 @@ function update(rdt) {
 }
 
 function titleItems() {
-  const d = Save.data, items = [{ id: 'new', label: 'NEW STORY' }];
-  if (d.story && d.story.chapter > 0 && CHAPTERS[d.story.chapter]) items.push({ id: 'cont', label: `CONTINUE — CH.${d.story.chapter + 1}: ${CHAPTERS[d.story.chapter].title}` });
-  items.push(d.beaten ? { id: 'endless', label: `TOETSWEEK (ENDLESS) — BEST: WAVE ${d.endlessBest}` } : { id: 'endless', label: 'TOETSWEEK — 🔒 finish the story first', locked: true });
-  items.push({ id: 'name', label: `NAME: ${d.name}${G.editName ? (Math.floor(G.t * 3) % 2 ? '_' : ' ') : ''}` });
-  items.push({ id: 'mode', label: `DIFFICULTY: ${d.chill ? 'CHILL (7 lives, slower bullets)' : 'NORMAL'}` });
-  items.push({ id: 'sound', label: `SOUND: ${Snd.muted ? 'OFF' : 'ON'}  [M]` });
-  items.push({ id: 'quit', label: 'BACK TO SOMTODAY' });
+  const d = Save.data, items = [{ id: 'new', label: 'NIEUW VERHAAL' }];
+  if (d.story && d.story.chapter > 0 && CHAPTERS[d.story.chapter]) items.push({ id: 'cont', label: `VERDERGAAN — H${d.story.chapter + 1}: ${CHAPTERS[d.story.chapter].title}` });
+  items.push(d.beaten ? { id: 'endless', label: `TOETSWEEK (EINDELOOS) — RECORD: GOLF ${d.endlessBest}` } : { id: 'endless', label: 'TOETSWEEK — 🔒 speel eerst het verhaal uit', locked: true });
+  items.push({ id: 'name', label: `NAAM: ${d.name}${G.editName ? (Math.floor(G.t * 3) % 2 ? '_' : ' ') : ''}` });
+  items.push({ id: 'mode', label: `MOEILIJKHEID: ${d.chill ? 'CHILL (7 levens, tragere kogels)' : 'NORMAAL'}` });
+  items.push({ id: 'sound', label: `GELUID: ${Snd.muted ? 'UIT' : 'AAN'}  [M]` });
+  items.push({ id: 'quit', label: 'TERUG NAAR SOMTODAY' });
   return items;
 }
 
@@ -2890,7 +2893,7 @@ function updateTitle(rdt) {
     for (const ch of input.typed) if (Save.data.name.length < 14 && /^[\p{L}\p{N} _\-.]$/u.test(ch)) Save.data.name = (G.nameFresh ? '' : Save.data.name) + ch, G.nameFresh = false;
     if (keyPressed('Backspace')) { Save.data.name = G.nameFresh ? '' : Save.data.name.slice(0, -1); G.nameFresh = false; }
     if (keyPressed('Enter', 'NumpadEnter', 'Escape') || input.click) {
-      if (!Save.data.name.trim()) Save.data.name = 'Student';
+      if (!Save.data.name.trim()) Save.data.name = 'Leerling';
       Save.data.name = Save.data.name.trim();
       G.editName = false; Save.write(); Snd.sfx.confirm(); consumeInput();
     }
@@ -2981,7 +2984,7 @@ function updateGameOver(rdt) {
   }
 }
 function goItems() {
-  return G.run.mode === 'endless' ? [{ id: 'retry', label: 'TRY AGAIN' }, { id: 'title', label: 'BACK TO TITLE' }] : [{ id: 'retry', label: 'HERKANSING (retake chapter)' }, { id: 'title', label: 'BACK TO TITLE' }];
+  return G.run.mode === 'endless' ? [{ id: 'retry', label: 'OPNIEUW PROBEREN' }, { id: 'title', label: 'NAAR HET TITELSCHERM' }] : [{ id: 'retry', label: 'HERKANSING (hoofdstuk opnieuw)' }, { id: 'title', label: 'NAAR HET TITELSCHERM' }];
 }
 
 function startEnding() {
@@ -2996,11 +2999,11 @@ function startEnding() {
 }
 
 const ENDING_TALK = [
-  ['ping', 'A 5,5! IT\'S A PASS!', 'confetti'],
-  ['you', '...I fought a living 1,0 for a 5,5.'],
-  ['ping', 'And you\'d do it again.'],
-  ['you', '...Yeah. Yeah, I would.'],
-  ['ping', 'Same time next report? *ding*'],
+  ['ping', 'EEN 5,5! VOLDOENDE!', 'confetti'],
+  ['you', '...Ik heb tegen een levende 1,0 gevochten voor een 5,5.'],
+  ['ping', 'En je zou het zo weer doen.'],
+  ['you', '...Ja. Ja, eigenlijk wel.'],
+  ['ping', 'Zelfde tijd bij het volgende rapport? *ding*'],
 ];
 
 function updateEnding(rdt) {
@@ -3062,9 +3065,9 @@ function drawTitle() {
   drawFXParts();
   ctx.restore();
   drawMenu(titleItems(), G.menuSel, 222, 38);
-  if (G.editName) txt('type your name · enter to save', W / 2, 222 + 3 * 38 + 22, { size: 11, align: 'center', color: '#ffd84a' });
-  txt('WASD move · MOUSE aim · HOLD CLICK write · SPACE dash · E inleveren · ESC pause · M mute', W / 2, H - 38, { size: 12, weight: 700, align: 'center', color: '#7d93ba' });
-  txt('A fan-made story mod for Somtoday · not affiliated with Somtoday', W / 2, H - 18, { size: 10, align: 'center', color: 'rgba(255,255,255,0.3)' });
+  if (G.editName) txt('typ je naam · enter om op te slaan', W / 2, 222 + 3 * 38 + 22, { size: 11, align: 'center', color: '#ffd84a' });
+  txt('WASD lopen · MUIS richten · KLIK VASTHOUDEN schrijven · SPATIE dashen · E inleveren · ESC pauze · M geluid', W / 2, H - 38, { size: 12, weight: 700, align: 'center', color: '#7d93ba' });
+  txt('Een fan-made verhaalmod voor Somtoday · niet officieel verbonden aan Somtoday', W / 2, H - 18, { size: 10, align: 'center', color: 'rgba(255,255,255,0.3)' });
   drawOverlay();
 }
 
@@ -3139,9 +3142,9 @@ function drawGameOver() {
   ctx.save(); ctx.translate(W / 2, 150); ctx.scale(k, k);
   glitchText('BLIJVEN ZITTEN', 0, 0, 64, '#ff3b5c', 1 + (Math.random() < 0.08 ? 4 : 0));
   ctx.restore();
-  txt(G.run.mode === 'endless' ? `You survived until wave ${G.run.endlessN}.` : 'You got held back. The Onvoldoende grows stronger...', W / 2, 205, { size: 17, italic: true, weight: 600, align: 'center', color: '#ffb3c0' });
-  if (g.newBest) txt('NEW PERSONAL BEST!', W / 2, 235, { size: 18, weight: 900, align: 'center', color: '#ffd84a' });
-  txt(`Score ${G.score.toLocaleString('nl-NL')} · Kills ${G.stats.kills} · Best combo ${G.bestCombo}`, W / 2, 262, { size: 14, weight: 700, align: 'center', color: '#9fb3d1' });
+  txt(G.run.mode === 'endless' ? `Je hebt het volgehouden tot golf ${G.run.endlessN}.` : 'Je bent blijven zitten. De Onvoldoende wordt sterker...', W / 2, 205, { size: 17, italic: true, weight: 600, align: 'center', color: '#ffb3c0' });
+  if (g.newBest) txt('NIEUW PERSOONLIJK RECORD!', W / 2, 235, { size: 18, weight: 900, align: 'center', color: '#ffd84a' });
+  txt(`Score ${G.score.toLocaleString('nl-NL')} · Verslagen ${G.stats.kills} · Beste combo ${G.bestCombo}`, W / 2, 262, { size: 14, weight: 700, align: 'center', color: '#9fb3d1' });
   if (g.t > 1.2) drawMenu(goItems(), g.sel, 330);
   ctx.restore();
   drawOverlay();
@@ -3180,13 +3183,13 @@ function drawEnding() {
       const ry = y + 92 + CHAPTERS.length * 52 + 10;
       ctx.fillStyle = '#1d2b4a'; ctx.fillRect(x + 20, ry, w - 40, 2);
       txt('GEMIDDELDE', x + 40, ry + 30, { size: 18, weight: 900, color: '#1d2b4a' });
-      txt(`Score ${G.score.toLocaleString('nl-NL')} · ${G.stats.kills} kills · ${fmtTime(G.stats.time)}`, x + 40, ry + 52, { size: 12, weight: 600, color: '#8392ad' });
+      txt(`Score ${G.score.toLocaleString('nl-NL')} · ${G.stats.kills} verslagen · ${fmtTime(G.stats.time)}`, x + 40, ry + 52, { size: 12, weight: 600, color: '#8392ad' });
       ctx.fillStyle = gradeColor(e.avg); rr(x + w - 124, ry + 12, 88, 40, 8); ctx.fill();
       txt(fmtGrade(e.avg), x + w - 80, ry + 33, { size: 22, weight: 900, align: 'center' });
-      if (e.t > avgAt + 0.8 && Math.floor(G.t * 2) % 2) txt('click / enter', x + w / 2, y + h - 14, { size: 12, align: 'center', color: '#8392ad' });
+      if (e.t > avgAt + 0.8 && Math.floor(G.t * 2) % 2) txt('klik / enter', x + w / 2, y + h - 14, { size: 12, align: 'center', color: '#8392ad' });
     }
   } else if (e.phase === 'reveal') {
-    txt('...and the grade you came to check:', W / 2, 120, { size: 20, italic: true, weight: 600, align: 'center', color: '#d6e4ff' });
+    txt('...en het cijfer waar het allemaal om begon:', W / 2, 120, { size: 20, italic: true, weight: 600, align: 'center', color: '#d6e4ff' });
     txt('WISKUNDE · Proefwerk H4', W / 2, 165, { size: 18, weight: 900, align: 'center', color: '#ffd84a' });
     const g = e.shown ?? 1;
     const landed = !!e.ev.land;
@@ -3361,10 +3364,10 @@ function closeGame() {
   const btn = document.getElementById('somquest-launch');
   if (btn) btn.style.display = '';
   toast(pick([
-    'PING: Come back soon — the grades won\'t defend themselves! 🔔',
-    'PING: Don\'t forget your actual homework. 🔔',
+    'PING: Kom snel terug — de cijfers verdedigen zichzelf niet! 🔔',
+    'PING: Vergeet je echte huiswerk niet, hè. 🔔',
     'MENTOR.EXE: Goed bezig. Let op je inzet. 🖥️',
-    'PING: The Onvoldoende never sleeps. Neither do I. 🔔',
+    'PING: De Onvoldoende slaapt nooit. Ik ook niet. 🔔',
   ]));
 }
 
@@ -3383,7 +3386,7 @@ function installButton() {
   b.id = 'somquest-launch';
   b.type = 'button';
   b.textContent = '⚔️ SomQuest';
-  b.title = 'Play SomQuest — Het Laatste Rapport (Alt+Q)';
+  b.title = 'Speel SomQuest — Het Laatste Rapport (Alt+Q)';
   b.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:2147483646;padding:11px 18px;border:0;border-radius:999px;font:800 14px/1 system-ui,"Segoe UI",Roboto,sans-serif;color:#fff;background:linear-gradient(135deg,#1f7bff,#7a3cff);box-shadow:0 6px 22px rgba(31,123,255,.45),inset 0 1px 0 rgba(255,255,255,.35);cursor:pointer;letter-spacing:.3px;transition:transform .15s ease,box-shadow .15s ease;';
   b.addEventListener('mouseenter', () => { b.style.transform = 'translateY(-2px) scale(1.05)'; b.style.boxShadow = '0 10px 30px rgba(122,60,255,.6),inset 0 1px 0 rgba(255,255,255,.35)'; });
   b.addEventListener('mouseleave', () => { b.style.transform = ''; b.style.boxShadow = '0 6px 22px rgba(31,123,255,.45),inset 0 1px 0 rgba(255,255,255,.35)'; });
