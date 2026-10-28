@@ -31,6 +31,7 @@ Use **⚡ Auto-spin the rest** to run the remaining wheels quickly, and tick **F
 ## The map
 
 - The world map is Natural Earth 1:50m data. Scroll or pinch to zoom, and drag to pan.
+- Each nation's flag is painted across its land like a flag map. The 🏳️ button on the map switches to plain colors.
 - Click **any** nation for stats. That covers your generated nations and the real countries, which show the land they lost to your nations.
 - Generated borders are random and never copy a real border. Coasts follow the real coastline.
   - **Natural & winding** borders wiggle like rivers and ridges.

@@ -21,7 +21,7 @@
 
   const state = {
     step: 0, results: {}, territory: null, busy: false, auto: false,
-    nations: [], nextSlot: 1, drawerOpen: false,
+    nations: [], nextSlot: 1, drawerOpen: false, flagFill: true,
   };
 
   /* ================= map ================= */
@@ -104,11 +104,31 @@
     return Math.max(b[1][0] - b[0][0], b[1][1] - b[0][1]);
   }
 
+  // Each nation's flag, stretched to cover its territory like a flag map.
+  function flagPatternContent(flagSvg, w, h) {
+    return flagSvg.replace(/^<svg[^>]*>/, `<svg viewBox="0 0 300 200" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice">`);
+  }
+
+  function renderFlagPatterns() {
+    defs.selectAll('pattern.flagpat').data(state.nations, d => d.slot)
+      .join(enter => enter.append('pattern').attr('class', 'flagpat').attr('id', d => 'flagpat-' + d.slot).attr('patternUnits', 'userSpaceOnUse'))
+      .each(function (d) {
+        const [[x0, y0], [x1, y1]] = path.bounds(d.geometry);
+        const w = Math.max(0.5, x1 - x0), h = Math.max(0.5, y1 - y0);
+        d3.select(this).attr('x', x0).attr('y', y0).attr('width', w).attr('height', h)
+          .html(flagPatternContent(d.stats.flag, w, h));
+      });
+  }
+
+  function nationFill(d) { return state.flagFill ? `url(#flagpat-${d.slot})` : d.color; }
+
   function renderNations() {
+    renderFlagPatterns();
     nationG.selectAll('path.nation').data(state.nations, d => d.slot).join('path')
       .attr('class', 'nation')
       .attr('d', d => path(d.geometry))
-      .attr('fill', d => d.color)
+      .attr('fill', nationFill)
+      .classed('flag-filled', state.flagFill)
       .on('click', (ev, d) => { ev.stopPropagation(); showNation(d); })
       .on('mousemove', (ev, d) => tip(ev, `<span class="tip-flag">${d.stats.flag}</span><b>${esc(d.stats.name)}</b><br><small>Pop. ${fmtBig(d.stats.population)} · ${fmtArea(d.stats.area)}</small>`))
       .on('mouseleave', hideTip);
@@ -576,6 +596,12 @@
     $('zoom-in').addEventListener('click', () => svg.transition().duration(300).call(zoom.scaleBy, 1.8));
     $('zoom-out').addEventListener('click', () => svg.transition().duration(300).call(zoom.scaleBy, 1 / 1.8));
     $('zoom-home').addEventListener('click', zoomHome);
+    $('flag-toggle').addEventListener('click', () => {
+      state.flagFill = !state.flagFill;
+      try { localStorage.setItem(STORE_KEY + '-flagfill', state.flagFill ? '1' : '0'); } catch (e) { /* ignore */ }
+      updateFlagToggle();
+      nationG.selectAll('path.nation').attr('fill', nationFill).classed('flag-filled', state.flagFill);
+    });
     $('drawer-close').addEventListener('click', closeDrawer);
 
     $('drawer-body').addEventListener('click', ev => {
@@ -605,11 +631,18 @@
     });
   }
 
+  function updateFlagToggle() {
+    $('flag-toggle').classList.toggle('active', state.flagFill);
+    $('flag-toggle').title = state.flagFill ? 'Showing flags on nations — click for plain colours' : 'Showing plain colours — click to paint flags on nations';
+  }
+
   function start() {
+    try { state.flagFill = localStorage.getItem(STORE_KEY + '-flagfill') !== '0'; } catch (e) { /* ignore */ }
     WorldGen.init(window.WORLD_TOPO);
     load();
     initMap();
     wire();
+    updateFlagToggle();
     updateCount();
     loadWheel();
     $('loading').classList.add('done');

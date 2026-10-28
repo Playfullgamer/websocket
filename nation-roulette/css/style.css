@@ -126,6 +126,7 @@ small { color: var(--muted); }
   transition: filter .15s;
 }
 .nation:hover { filter: brightness(1.1); }
+.nation.flag-filled { stroke: rgba(10, 14, 26, .95); stroke-width: 2; }
 .pending-land {
   fill: rgba(244, 201, 93, .55); stroke: #fff2c2; stroke-dasharray: 6 4; vector-effect: non-scaling-stroke;
   animation: march 1s linear infinite, glow 1.6s ease-in-out infinite alternate;
