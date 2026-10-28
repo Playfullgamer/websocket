@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "SomQuest — Het Laatste Rapport",
+  "version": "1.0.0",
+  "description": "A full story game mod for Somtoday: 5 chapters, bosses, lore, sound and effects.",
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.somtoday.nl/*"
+      ],
+      "js": [
+        "somquest.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
