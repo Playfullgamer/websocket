@@ -3,6 +3,7 @@
   "name": "SomQuest — Het Laatste Rapport",
   "version": "1.0.0",
   "description": "Een complete verhaalgame-mod voor Somtoday: 5 hoofdstukken, bazen, lore, geluid en effecten.",
+  "homepage_url": "https://github.com/Playfullgamer/websocket",
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",

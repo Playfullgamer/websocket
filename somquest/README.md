@@ -14,6 +14,8 @@ Een complete verhaalgame die **in Somtoday** draait. Na het installeren staat er
 
 Na een update van de code: klik bij de extensie in `chrome://extensions` op het ↻-icoontje en ververs Somtoday.
 
+**In de Chrome Web Store zetten?** Alles wat je daarvoor nodig hebt (zip, screenshots, teksten en een stappenplan) staat in [`store/`](store/LEESMIJ.md).
+
 **Zonder Somtoday spelen?** Open [`demo.html`](demo.html) in je browser. Dat is een nagemaakte pagina met dezelfde knop.
 
 <details>

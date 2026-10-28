@@ -31,6 +31,7 @@ const manifest = {
   name: 'SomQuest — Het Laatste Rapport',
   version: pkg.version,
   description: 'Een complete verhaalgame-mod voor Somtoday: 5 hoofdstukken, bazen, lore, geluid en effecten.',
+  homepage_url: 'https://github.com/Playfullgamer/websocket',
   icons: { 16: 'icon16.png', 48: 'icon48.png', 128: 'icon128.png' },
   content_scripts: [{ matches: ['https://*.somtoday.nl/*'], js: ['somquest.js'], run_at: 'document_idle' }],
 };
