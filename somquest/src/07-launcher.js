@@ -195,6 +195,8 @@ function boot() {
     _debug: {
       state: () => G,
       input: () => input,
+      audio: () => Snd.debugInfo(),
+      seekMusic: t => Snd.debugSeek(t),
       god: (on = true) => { G.debugGod = on; },
       chapter: i => { if (!isOpen) return; Save.data.story = null; newRun('story', 0); G.run.chapter = i; startChapter(i); },
       endless: () => newRun('endless'),

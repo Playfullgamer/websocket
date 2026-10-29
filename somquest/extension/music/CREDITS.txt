@@ -1,0 +1,43 @@
+SomQuest — audio credits
+========================
+
+MUSIC
+All tracks come from the SuperTux project (https://github.com/SuperTux/supertux, data/music).
+They were loudness-normalised and re-encoded to Ogg Opus at 64 kbps; nothing else was changed.
+Each track is used under the Creative Commons Attribution-ShareAlike licence named below.
+The SuperTux tracks by Jason Lavallée and Lukas Nystrand are dual-licensed (GPL v2+ and CC-BY-SA);
+SomQuest uses them under CC-BY-SA.
+
+  night.ogg             by SnugglyBun ......................... CC-BY-SA 4.0   (title screen)
+  chipdisko.ogg         "Mortimer's Chipdisko" by Lukas Nystrand
+                        (Mortimer Twang) ...................... CC-BY-SA       (H1 Het Rooster)
+  forest-sprint.ogg     by Jason Lavallée ..................... CC-BY-SA       (H2 Het Huiswerk)
+  crystalmine_main.ogg  by SnugglyBun ......................... CC-BY-SA 4.0   (H3 De Cijfers)
+  halloween_1.ogg       by Forty-Two .......................... CC-BY-SA 4.0   (H4 De Afwezigheid)
+  yetiboss.ogg          by SnugglyBun, cover of the
+                        SuperTux boss theme by Wansti ......... CC-BY-SA 4.0   (boss fights)
+  bright_thunders.ogg   by Chris "Krobonil"
+                        Leutwyler ............................. CC-BY-SA       (final bosses)
+  sunset.ogg            by SnugglyBun ......................... CC-BY-SA 4.0   (ending & credits)
+
+  CC-BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0/
+  CC-BY-SA 3.0: https://creativecommons.org/licenses/by-sa/3.0/
+
+SOUND EFFECTS
+All sound effects are public domain (CC0 1.0, https://creativecommons.org/publicdomain/zero/1.0/).
+They were trimmed, faded, normalised and converted to Ogg Vorbis.
+
+  From the Sonic Pi sample library (https://github.com/sonic-pi-net/sonic-pi, etc/samples),
+  originally from freesound.org:
+    elec_plip, elec_flip, elec_ping, elec_pop, elec_blip, elec_blip2, elec_tick, elec_twip,
+    elec_beep, elec_twang, elec_chime, elec_bong (looppool) · bass_voxy_hit_c, bass_drop_c (ani_music)
+    perc_swoosh, perc_impact1, perc_bell2, mehackit_robot2, glitch_robot2, glitch_perc1/3/5 (hullum)
+    perc_bell (AlaskaRobotics) · misc_cineboom (Northern_Monkey) · ambi_soft_buzz (ludvique)
+    ambi_dark_woosh (EcoDTR) · ambi_swoosh (Halgrimm) · bd_boom (Snapper4298)
+    drum_heavy_kick (Zajo) · hat_zap (TheEndOfACycle) · tbd_perc_blip (The Black Dog)
+
+  From SuperTux (data/sounds):
+    tada.ogg (plasterbrain, freesound.org) · crystallo-shardhit.ogg and crystallo-shatter.ogg
+    (remixed by weluvgoatz from sounds by cyoung510 and C_Rogers, freesound.org)
+
+The scripts that produced these files are in somquest/tools/make-audio.py.

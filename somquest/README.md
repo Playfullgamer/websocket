@@ -31,7 +31,11 @@ Installeer [`dist/somquest.user.js`](dist/somquest.user.js): open het bestand op
 - **9 soorten vijanden:** tussenuren, te-laatmeldingen die op je af stormen, toetsen die schieten, huiswerkstapels die uit elkaar vallen, deadlines die steeds sneller gaan, onvoldoendes, spijbelspoken en meldingen.
 - **13 upgrades** (schoolspullen) om tussen de gevechten uit te kiezen, zoals de grafische rekenmachine, markeerstift, nietmachine, gum en passer.
 - **Bullet-hell-gameplay** met dashen door kogels, combo's (van VOLDOENDE tot CUM LAUDE) en **INLEVEREN**, dat het hele scherm leegveegt.
-- **Effecten en geluid:** deeltjes, screenshake, slow-motion, glitch-effecten, lasers en een donker level. Alle geluiden en chiptune-muziek worden live gegenereerd, er zitten dus geen audiobestanden in.
+- **Effecten:** deeltjes, screenshake, slow-motion, glitch-effecten, lasers en een donker level.
+- **Geluid en muziek uit open bibliotheken:**
+  - **Effecten:** echte opnames uit de Sonic Pi-samplebibliotheek en SuperTux, allemaal publiek domein (CC0). MENTOR.EXE heeft een robotstem, De Onvoldoende een glitchstem.
+  - **Muziek:** een eigen nummer per hoofdstuk en voor de bazen, uit het open-sourcespel SuperTux (CC-BY-SA). Alle makers staan in de aftiteling en in [`extension/music/CREDITS.txt`](extension/music/CREDITS.txt).
+  - **Terugvaloptie:** lukt het laden van een geluid of nummer niet, dan valt de game terug op ingebouwde synthesizer-geluiden.
 - **Cijfers:** elk hoofdstuk levert een cijfer op (1,0 tot 10,0), en die komen samen op je eindrapport.
 - **Herkansing:** ga je dood, dan doe je het hoofdstuk opnieuw.
 - **Toetsweek:** een eindeloze modus die je vrijspeelt door het verhaal uit te spelen.
@@ -59,12 +63,20 @@ De game is gewoon JavaScript, zonder dependencies. De broncode staat in `src/` e
 node build.js
 ```
 
-Dat schrijft `extension/somquest.js` en `extension/manifest.json`, plus `dist/somquest.js` (voor `demo.html`) en `dist/somquest.user.js`.
+Dat schrijft `extension/somquest.js` en `extension/manifest.json`, plus `dist/somquest.js` (voor `demo.html`) en `dist/somquest.user.js`. De geluidseffecten uit `assets/sfx/` worden in de bundel ingebouwd. De muziek staat los in `extension/music/`.
+
+De audio zelf wordt gemaakt met `tools/make-audio.py` (vereist `ffmpeg`). Dat script haalt de bestanden uit een checkout van Sonic Pi en SuperTux, kort ze in, normaliseert ze en codeert ze opnieuw:
+
+```bash
+python3 tools/make-audio.py <pad-naar-sonic-pi> <pad-naar-supertux>
+```
+
+Speel je de demo via `file://` of een webserver, dan komt de muziek uit `extension/music/`. Het Tampermonkey-script haalt de muziek van GitHub. Blokkeert Somtoday dat, dan krijg je de synthesizer-muziek.
 
 | Bestand | Inhoud |
 |---|---|
 | `src/00-util.js` | rekenhulpjes, opslaan, teksthulpjes |
-| `src/01-audio.js` | gegenereerde geluidseffecten en de chiptune-sequencer |
+| `src/01-audio.js` | afspelen van effecten en muziek, plus de synthesizer als terugvaloptie |
 | `src/02-fx.js` | deeltjes, shake, flitsen, hit-stop, glitch |
 | `src/03-render.js` | achtergronden per thema en de portretten |
 | `src/04-entities.js` | speler, upgrades, kogels, lasers, vijanden en bazen |

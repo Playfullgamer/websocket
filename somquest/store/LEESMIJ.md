@@ -51,7 +51,7 @@ WAT ZIT ERIN
 • Bullet-hell-gevechten met dashen, combo's (van VOLDOENDE tot CUM LAUDE) en INLEVEREN
 • Een cijfer per hoofdstuk en een eindrapport
 • Herkansing als je doodgaat, en de eindeloze Toetsweek-modus
-• Live gegenereerde chiptune-muziek en geluidseffecten
+• Muziek uit het open-sourcespel SuperTux en echte geluidseffecten (makers staan in de aftiteling)
 • Chill-moeilijkheid met meer levens
 
 BESTURING

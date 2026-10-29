@@ -237,7 +237,7 @@ function updateDialog(dt) {
   if (d.ch < d.text.length) {
     const prev = Math.floor(d.ch);
     d.ch = Math.min(d.text.length, d.ch + dt * (d.who === 'sys' || d.who === 'log' ? 42 : 55));
-    if (Math.floor(d.ch) !== prev && d.text[prev] !== ' ') Snd.sfx.type(sp.pitch);
+    if (Math.floor(d.ch) !== prev && d.text[prev] !== ' ') Snd.sfx.type(sp.pitch, sp.voice);
   }
   if (keyPressed('Tab')) { G.dialog = null; consumeInput(); d.cb && d.cb(); return; }
   if (confirmPressed() || keyPressed('KeyE')) {
@@ -625,7 +625,7 @@ function updateCutscene(rdt) {
   ev('f3', 6.6, () => { Snd.sfx.glitch(); glitch(0.4); addShake(8); });
   ev('roar', 6.9, () => { Snd.sfx.roar(); glitch(0.6); });
   ev('shatter', 7.6, () => {
-    Snd.sfx.boom(); Snd.sfx.whoosh(); flash('#ffffff', 1); addShake(20);
+    Snd.sfx.shatter(); Snd.sfx.whoosh(); flash('#ffffff', 1); addShake(20);
     for (let i = 0; i < 70; i++) { const life = rand(0.8, 1.6); particle({ x: rand(130, 830), y: rand(70, 470), vx: rand(-400, 400), vy: rand(-400, 200), life, max: life, size: rand(10, 26), color: pick(['#1e6fd9', '#ffffff', '#eef3fb', '#e5484d', '#2fbf71']), shape: 'paper', drag: 0.5, grav: 500, rot: rand(TAU), vr: rand(-8, 8), add: false }); }
   });
   const skip = c.t > 0.4 && (confirmPressed() || keyPressed('Escape'));

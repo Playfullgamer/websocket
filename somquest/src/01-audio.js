@@ -1,5 +1,13 @@
-// ───────────────────────────── audio: synthesized sfx + chiptune ─────────────────────────────
+// ───────────────────────────── audio ─────────────────────────────
+// Sound effects are CC0 recordings embedded by build.js (SFX_DATA); music is CC-BY-SA tracks in
+// extension/music (see extension/music/CREDITS.txt). The synthesized versions are the fallback
+// whenever a sample or track can't be loaded.
 const Snd = (() => {
+  const MUSIC_BASE = (() => {
+    try { if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id && chrome.runtime.getURL) return chrome.runtime.getURL('music/'); } catch (e) { /* not an extension */ }
+    try { const src = document.currentScript && document.currentScript.src; if (src && /\/dist\/[^/]+\.js(\?|$)/.test(src)) return new URL('../extension/music/', src).href; } catch (e) { /* no script url */ }
+    return 'https://raw.githubusercontent.com/Playfullgamer/websocket/claude/beautiful-ride-30vdbb/somquest/extension/music/';
+  })();
   let ac = null, master, sfxBus, musBus, noiseBuf;
   let muted = false;
   const last = {};
@@ -18,16 +26,20 @@ const Snd = (() => {
     noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
     const d = noiseBuf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    loadSamples();
   }
 
-  function suspend() { if (ac && ac.state === 'running') ac.suspend(); }
-  function resume() { if (ac && ac.state === 'suspended') ac.resume(); }
+  function suspend() { if (ac && ac.state === 'running') ac.suspend(); if (track) track.el.pause(); }
+  function resume() { if (ac && ac.state === 'suspended') ac.resume(); if (track) track.el.play().catch(() => {}); }
 
   function setMuted(m) {
     muted = m;
     if (master) master.gain.setTargetAtTime(m ? 0 : 0.7, ac.currentTime, 0.05);
   }
-  function duck(on) { if (musBus) musBus.gain.setTargetAtTime(on ? 0.12 : 0.42, ac.currentTime, 0.1); }
+  function duck(on) {
+    ducked = on;
+    if (musBus) musBus.gain.setTargetAtTime(on ? 0.12 : 0.42, ac.currentTime, 0.1);
+  }
 
   function tone(o) {
     if (!ac) return;
@@ -71,7 +83,7 @@ const Snd = (() => {
     last[name] = now; return true;
   }
 
-  const sfx = {
+  const synth = {
     shoot() { if (!gate('shoot', 0.05)) return; tone({ type: 'square', f: 1300 + rand(-90, 90), f2: 640, dur: 0.06, vol: 0.03 }); },
     hit() { if (!gate('hit', 0.035)) return; tone({ type: 'square', f: 320, f2: 120, dur: 0.06, vol: 0.05 }); noise({ f: 3200, dur: 0.04, vol: 0.05 }); },
     crit() { if (!gate('crit', 0.05)) return; tone({ type: 'square', f: 1800, f2: 2600, dur: 0.07, vol: 0.05 }); },
@@ -185,10 +197,10 @@ const Snd = (() => {
     }
   }
 
-  function playMusic(name) {
+  function synthPlay(name) {
     if (!ac) return;
     if (cur && cur.name === name) return;
-    stopMusic();
+    synthStop();
     const s = SONGS[name];
     if (!s) return;
     const gain = ac.createGain();
@@ -200,7 +212,7 @@ const Snd = (() => {
     schedule();
   }
 
-  function stopMusic() {
+  function synthStop() {
     if (!cur) return;
     const c = cur; cur = null;
     clearInterval(c.timer);
@@ -212,5 +224,152 @@ const Snd = (() => {
     setTimeout(() => { try { c.gain.disconnect(); } catch (e) { /* ignore */ } }, 900);
   }
 
-  return { init, sfx, playMusic, stopMusic, setMuted, duck, suspend, resume, get muted() { return muted; } };
+  // ── sampled sound effects ──
+  const buffers = {};
+  function loadSamples() {
+    if (typeof SFX_DATA === 'undefined') return;
+    for (const [k, b64] of Object.entries(SFX_DATA)) {
+      try {
+        const bin = atob(b64), u8 = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+        ac.decodeAudioData(u8.buffer).then(b => { buffers[k] = b; }, () => { /* keep synth fallback */ });
+      } catch (e) { /* keep synth fallback */ }
+    }
+  }
+
+  function samp(name, o = {}) {
+    const buf = buffers[name];
+    if (!buf || !ac) return;
+    const t0 = ac.currentTime + (o.delay || 0), rate = o.rate || 1, vol = o.vol ?? 0.5;
+    const src = ac.createBufferSource(), g = ac.createGain();
+    src.buffer = buf;
+    src.playbackRate.value = rate;
+    g.gain.setValueAtTime(vol, t0);
+    src.connect(g); g.connect(sfxBus);
+    if (o.dur) {
+      g.gain.setValueAtTime(vol, t0 + Math.max(0, o.dur - 0.015));
+      g.gain.linearRampToValueAtTime(0.0001, t0 + o.dur);
+      src.start(t0, o.offset || 0, o.dur * rate + 0.01);
+    } else src.start(t0, o.offset || 0);
+  }
+
+  // each effect plays its samples once they're decoded, otherwise the synth version
+  const S = (needs, fallback, fn) => (...a) => (needs.every(n => buffers[n]) ? fn(...a) : synth[fallback](...a));
+  const sfx = {
+    shoot: S(['shoot'], 'shoot', () => { if (gate('s_shoot', 0.05)) samp('shoot', { vol: 0.16, rate: rand(0.9, 1.15) }); }),
+    hit: S(['hit'], 'hit', () => { if (gate('s_hit', 0.035)) samp('hit', { vol: 0.22, rate: rand(0.9, 1.1) }); }),
+    crit: S(['crit'], 'crit', () => { if (gate('s_crit', 0.05)) samp('crit', { vol: 0.3, rate: 1.25 }); }),
+    kill: S(['kill', 'pop'], 'kill', () => { if (!gate('s_kill', 0.04)) return; samp('kill', { vol: 0.32, rate: rand(0.9, 1.2) }); samp('pop', { vol: 0.25, rate: rand(0.8, 1) }); }),
+    hurt: S(['hurt', 'impact'], 'hurt', () => { samp('hurt', { vol: 0.7 }); samp('impact', { vol: 0.4, rate: 1.2 }); }),
+    dash: S(['dash'], 'dash', () => samp('dash', { vol: 0.35, rate: rand(1.05, 1.25) })),
+    pickup: S(['pickup'], 'pickup', (n = 0) => { if (gate('s_pickup', 0.03)) samp('pickup', { vol: 0.18, rate: Math.pow(2, (n % 12) / 12) }); }),
+    ping: S(['bell'], 'ping', () => samp('bell', { vol: 0.45, rate: 1.5 })),
+    type: S(['blip'], 'type', (p = 1, voice) => {
+      if (!gate('s_type', 0.045)) return;
+      if (voice === 'robot' && buffers.robot) samp('robot', { offset: rand(0, 0.85), dur: 0.07, rate: p * 1.1, vol: 0.22 });
+      else if (voice === 'glitch' && buffers.glitchv) samp('glitchv', { offset: rand(0, 0.8), dur: 0.08, rate: p * 1.6, vol: 0.25 });
+      else samp('blip', { rate: p * rand(0.95, 1.05), vol: 0.12 });
+    }),
+    select: S(['select'], 'select', () => samp('select', { vol: 0.25 })),
+    confirm: S(['confirm', 'select'], 'confirm', () => { samp('confirm', { vol: 0.3 }); samp('select', { vol: 0.2, rate: 1.5, delay: 0.06 }); }),
+    special: S(['cineboom', 'swoosh', 'chime'], 'special', () => { samp('cineboom', { vol: 0.9 }); samp('swoosh', { vol: 0.5, rate: 0.8 }); samp('chime', { vol: 0.35, rate: 1.5, delay: 0.1 }); }),
+    laserWarn: S(['twang'], 'laserWarn', () => { if (gate('s_lw', 0.12)) samp('twang', { vol: 0.25, rate: 1.4 }); }),
+    laser: S(['buzz', 'zap'], 'laser', () => { if (!gate('s_laser', 0.1)) return; samp('buzz', { vol: 0.45 }); samp('zap', { vol: 0.3, rate: 0.6 }); }),
+    eshoot: S(['zap'], 'eshoot', () => { if (gate('s_eshoot', 0.07)) samp('zap', { vol: 0.14, rate: rand(1.1, 1.4) }); }),
+    spawn: S(['spawn'], 'spawn', () => { if (gate('s_spawn', 0.1)) samp('spawn', { vol: 0.18 }); }),
+    roar: S(['drop', 'darkwoosh'], 'roar', () => { samp('drop', { vol: 0.8 }); samp('darkwoosh', { vol: 0.6 }); }),
+    glitch: S(['glitch1', 'glitch3', 'glitch5'], 'glitch', () => samp(pick(['glitch1', 'glitch3', 'glitch5']), { vol: 0.45, rate: rand(0.9, 1.2) })),
+    boom: S(['boom', 'cineboom'], 'boom', () => { samp('boom', { vol: 0.85 }); samp('cineboom', { vol: 0.5, rate: 1.2 }); }),
+    levelup: S(['chime'], 'levelup', () => samp('chime', { vol: 0.4 })),
+    heal: S(['bell2'], 'heal', () => samp('bell2', { vol: 0.35, rate: 1.3 })),
+    deny: S(['bong'], 'deny', () => samp('bong', { vol: 0.3, rate: 0.8 })),
+    whoosh: S(['swoosh'], 'whoosh', () => samp('swoosh', { vol: 0.4 })),
+    slam: S(['kick', 'impact'], 'slam', () => { samp('kick', { vol: 0.7 }); samp('impact', { vol: 0.4 }); }),
+    tick: S(['tick'], 'tick', () => samp('tick', { vol: 0.2, rate: rand(1.4, 1.8) })),
+    fanfare: S(['tada'], 'fanfare', () => samp('tada', { vol: 0.6 })),
+    shatter: S(['shatter', 'impact'], 'boom', () => { samp('shatter', { vol: 0.7 }); samp('impact', { vol: 0.5, rate: 0.8 }); }),
+  };
+
+  // ── music tracks: [file, loop start, loop end (0 = end of file)] ──
+  const MUSIC = {
+    title: ['night.ogg', 2.912, 72.727],
+    level: ['chipdisko.ogg', 0, 0],
+    homework: ['forest-sprint.ogg', 0, 0],
+    grades: ['crystalmine_main.ogg', 7.499, 146.25],
+    dark: ['halloween_1.ogg', 37.6, 0],
+    boss: ['yetiboss.ogg', 1.446, 82.41],
+    final: ['bright_thunders.ogg', 0, 0],
+    ending: ['sunset.ogg', 34.912, 104.727],
+  };
+  const MUSIC_VOL = 0.55;
+  const failed = {}, fading = [];
+  let track = null, ducked = false, mTimer = 0;
+
+  function musicTick() {
+    const target = muted ? 0 : MUSIC_VOL * (ducked ? 0.3 : 1);
+    if (track) {
+      track.fade = Math.min(1, track.fade + 0.05 / 0.8);
+      track.el.volume = clamp(target * track.fade, 0, 1);
+      if (track.end && track.el.currentTime >= track.end) track.el.currentTime = track.start;
+    }
+    for (let i = fading.length - 1; i >= 0; i--) {
+      const f = fading[i];
+      f.fade -= 0.05 / 0.6;
+      if (f.fade > 0) { f.el.volume = clamp(f.v0 * f.fade, 0, 1); continue; }
+      f.el.pause(); f.el.removeAttribute('src'); f.el.load();
+      fading.splice(i, 1);
+    }
+    if (!track && !fading.length) { clearInterval(mTimer); mTimer = 0; }
+  }
+
+  function playMusic(name) {
+    if ((track && track.name === name) || (cur && cur.name === name)) return;
+    stopMusic();
+    const m = MUSIC[name];
+    if (!m || failed[name]) { synthPlay(name); return; }
+    const el = new Audio();
+    const t = { name, el, start: m[1], end: m[2], fade: 0 };
+    el.preload = 'auto';
+    el.volume = 0;
+    el.loop = !m[1] && !m[2];
+    el.addEventListener('ended', () => { if (track === t) { el.currentTime = t.start; el.play().catch(() => {}); } });
+    el.addEventListener('error', () => { failed[name] = true; if (track === t) { track = null; synthPlay(name); } });
+    track = t;
+    // a blob URL is always seekable, so loop points work even when the host doesn't serve byte ranges
+    trackUrl(m[0]).then(url => {
+      if (track !== t) return;
+      el.src = url;
+      el.play().catch(() => {});
+    });
+    if (!mTimer) mTimer = setInterval(musicTick, 50);
+  }
+
+  const blobUrls = {};
+  function trackUrl(file) {
+    const url = MUSIC_BASE + file;
+    if (url.startsWith('file:')) return Promise.resolve(url); // fetch can't read file:// and the element can
+    if (!blobUrls[file]) {
+      blobUrls[file] = fetch(url).then(r => (r.ok ? r.blob() : Promise.reject(r.status))).then(b => URL.createObjectURL(b)).catch(() => url);
+    }
+    return blobUrls[file];
+  }
+
+  function stopMusic() {
+    synthStop();
+    if (!track) return;
+    fading.push({ el: track.el, fade: 1, v0: track.el.volume });
+    track = null;
+    if (!mTimer) mTimer = setInterval(musicTick, 50);
+  }
+
+  function debugInfo() {
+    return {
+      samples: Object.keys(buffers).length, base: MUSIC_BASE, synthMusic: cur && cur.name, failed: Object.keys(failed),
+      track: track && { name: track.name, src: track.el.currentSrc, time: track.el.currentTime, paused: track.el.paused, volume: track.el.volume, error: track.el.error && track.el.error.code },
+    };
+  }
+
+  function debugSeek(t) { if (track) track.el.currentTime = t; }
+
+  return { init, sfx, playMusic, stopMusic, setMuted, duck, suspend, resume, debugInfo, debugSeek, get muted() { return muted; } };
 })();
